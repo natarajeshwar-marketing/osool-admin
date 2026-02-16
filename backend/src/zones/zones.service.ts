@@ -29,11 +29,11 @@ export class ZonesService {
     // Calculate metrics for each zone
     const zonesWithMetrics = await Promise.all(zones.map(async (zone) => {
       const stats = await this.dailyLogsRepository.createQueryBuilder('log')
-        .leftJoin('log.crew', 'crew')
-        .where('crew.zoneId = :zoneId', { zoneId: zone.id })
+        .where('log.snapshotZoneId = :zoneId', { zoneId: zone.id })
         .select('SUM(log.totalRevenue)', 'totalRevenue')
         .addSelect('SUM(log.hoursWorked)', 'totalHours')
-        .addSelect('SUM(crew.scheduledHours)', 'totalScheduled') // Approximate capacity utilized
+        // Use snapshot scheduled hours for capacity in that zone
+        .addSelect('SUM(log.snapshotScheduledHours)', 'totalScheduled')
         .getRawOne();
 
       const totalRevenue = parseFloat(stats.totalRevenue) || 0;

@@ -28,6 +28,19 @@ export class DailyLog {
     @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
     totalRevenue: number;
 
+    // Snapshots of Crew data at the time of log creation
+    @Column({ name: 'snapshot_zone_id', nullable: true })
+    snapshotZoneId: string;
+
+    @Column({ name: 'snapshot_role', nullable: true })
+    snapshotRole: string;
+
+    @Column({ name: 'snapshot_status', nullable: true })
+    snapshotStatus: string;
+
+    @Column({ name: 'snapshot_scheduled_hours', type: 'decimal', precision: 5, scale: 2, default: 0 })
+    snapshotScheduledHours: number;
+
     @CreateDateColumn()
     createdAt: Date;
 

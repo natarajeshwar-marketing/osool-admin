@@ -18,6 +18,10 @@ interface HistoryLogEntry {
     jobsCompleted: number
     revenuePerJob: number
     totalRevenue: number
+    snapshotRole?: string
+    snapshotZone?: {
+        name: string
+    }
     crew: {
         firstName: string
         lastName: string
@@ -90,11 +94,11 @@ export function LogsHistoryTable({ logs, loading }: LogsHistoryTableProps) {
                                         {log.crew?.firstName} {log.crew?.lastName}
                                     </TableCell>
                                     <TableCell className="capitalize">
-                                        {log.crew?.role}
+                                        {log.snapshotRole || log.crew?.role}
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="outline" className="font-normal">
-                                            {log.crew?.zone?.name || 'Unassigned'}
+                                            {log.snapshotZone?.name || log.crew?.zone?.name || 'Unassigned'}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-center">{Number(log.hoursWorked)}</TableCell>
