@@ -54,11 +54,14 @@ export default function DailyLogEntry() {
                 setAllLogsForDate(data || [])
 
                 // Identify submitted zones
+                // Identify submitted zones
                 const submitted = new Set<string>()
                 if (data) {
                     data.forEach((log: any) => {
-                        if (log.crew && log.crew.zone) {
-                            submitted.add(log.crew.zone.id)
+                        // Priority: use snapshotZoneId (historical truth) -> then crew.zone.id (fallback/current)
+                        const zoneId = log.snapshotZoneId || (log.crew && log.crew.zone ? log.crew.zone.id : null)
+                        if (zoneId) {
+                            submitted.add(zoneId)
                         }
                     })
                 }
@@ -77,9 +80,10 @@ export default function DailyLogEntry() {
             return
         };
 
-        const zoneLogs = allLogsForDate.filter((log: any) =>
-            selectedZone === "all" || (log.crew && log.crew.zone && log.crew.zone.id === selectedZone)
-        )
+        const zoneLogs = allLogsForDate.filter((log: any) => {
+            const logZoneId = log.snapshotZoneId || (log.crew && log.crew.zone ? log.crew.zone.id : null)
+            return selectedZone === "all" || logZoneId === selectedZone
+        })
 
         if (zoneLogs.length > 0) {
             const newEntries: Record<string, LogEntry> = {}
