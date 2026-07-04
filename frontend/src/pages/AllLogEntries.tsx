@@ -4,7 +4,7 @@ import type { DateRange } from "react-day-picker"
 import { toast } from "sonner"
 import { Search } from "lucide-react"
 
-import { DateRangePicker } from "@/components/dashboard/DateRangePicker"
+import { DateRangePicker } from "@/components/shared/DateRangePicker"
 import { LogsHistoryTable } from "@/components/daily-log/LogsHistoryTable"
 import { PaginationControls } from "@/components/ui/PaginationControls"
 import { Button } from "@/components/ui/button"
@@ -15,7 +15,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import type { Zone } from "@/types"
+import type { Building } from "@/types"
 
 export default function AllLogEntries() {
     const [date, setDate] = useState<DateRange | undefined>({
@@ -24,29 +24,29 @@ export default function AllLogEntries() {
     })
     const [logs, setLogs] = useState<any[]>([])
     const [loading, setLoading] = useState(false)
-    const [zones, setZones] = useState<Zone[]>([])
+    const [buildings, setBuildings] = useState<Building[]>([])
 
     // Filter states
     const [selectedRole, setSelectedRole] = useState("all")
-    const [selectedZone, setSelectedZone] = useState("all")
+    const [selectedBuilding, setSelectedBuilding] = useState("all")
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
     const [totalItems, setTotalItems] = useState(0)
 
-    // Fetch zones on mount
+    // Fetch buildings on mount
     useEffect(() => {
-        const fetchZones = async () => {
+        const fetchBuildings = async () => {
             try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/zones`)
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/buildings`)
                 const data = await res.json()
-                setZones(data)
+                setBuildings(data)
             } catch (err) {
-                console.error("Failed to fetch zones", err)
+                console.error("Failed to fetch buildings", err)
             }
         }
-        fetchZones()
+        fetchBuildings()
     }, [])
 
     const fetchLogs = async () => {
@@ -67,8 +67,8 @@ export default function AllLogEntries() {
                 params.append('role', selectedRole)
             }
 
-            if (selectedZone && selectedZone !== 'all') {
-                params.append('zoneId', selectedZone)
+            if (selectedBuilding && selectedBuilding !== 'all') {
+                params.append('buildingId', selectedBuilding)
             }
 
             const res = await fetch(`${import.meta.env.VITE_API_URL}/daily-logs?${params.toString()}`)
@@ -125,15 +125,15 @@ export default function AllLogEntries() {
                     </SelectContent>
                 </Select>
 
-                <Select value={selectedZone} onValueChange={setSelectedZone}>
+                <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
                     <SelectTrigger className="w-[160px] bg-white dark:bg-neutral-950">
-                        <SelectValue placeholder="Zone" />
+                        <SelectValue placeholder="Building" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All Zones</SelectItem>
-                        {zones.map((zone) => (
-                            <SelectItem key={zone.id} value={zone.id}>
-                                {zone.name}
+                        <SelectItem value="all">All Buildings</SelectItem>
+                        {buildings.map((building) => (
+                            <SelectItem key={building.id} value={building.id}>
+                                {building.name}
                             </SelectItem>
                         ))}
                     </SelectContent>

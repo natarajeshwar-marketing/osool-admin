@@ -6,30 +6,30 @@ import { CrewStats } from "@/components/crews/CrewStats"
 import { CrewFilters } from "@/components/crews/CrewFilters"
 import { CrewTable } from "@/components/crews/CrewTable"
 import { Spinner } from "@/components/ui/spinner"
-import type { Crew, Zone } from "@/types"
+import type { Crew, Building } from "@/types"
 
 export default function CrewManagement() {
     const [crews, setCrews] = useState<Crew[]>([])
-    const [zones, setZones] = useState<Zone[]>([])
+    const [buildings, setBuildings] = useState<Building[]>([])
     const [searchTerm, setSearchTerm] = useState("")
     const [statusFilter, setStatusFilter] = useState("all")
     const [roleFilter, setRoleFilter] = useState("all")
-    const [zoneFilter, setZoneFilter] = useState("all")
+    const [buildingFilter, setBuildingFilter] = useState("all")
     const [timeRange, setTimeRange] = useState("today")
     const [loading, setLoading] = useState(true)
 
     const fetchData = useCallback(async () => {
         try {
-            const [crewsRes, zonesRes] = await Promise.all([
+            const [crewsRes, buildingsRes] = await Promise.all([
                 fetch(`${import.meta.env.VITE_API_URL}/crews`),
-                fetch(`${import.meta.env.VITE_API_URL}/zones`)
+                fetch(`${import.meta.env.VITE_API_URL}/buildings`)
             ])
 
             const crewsData = await crewsRes.json()
-            const zonesData = await zonesRes.json()
+            const buildingsData = await buildingsRes.json()
 
             setCrews(crewsData)
-            setZones(zonesData)
+            setBuildings(buildingsData)
         } catch (error) {
             console.error("Failed to fetch data:", error)
         } finally {
@@ -48,9 +48,9 @@ export default function CrewManagement() {
 
         const matchesStatus = statusFilter === "all" || crew.status.toLowerCase() === statusFilter.toLowerCase()
         const matchesRole = roleFilter === "all" || crew.role.toLowerCase() === roleFilter.toLowerCase()
-        const matchesZone = zoneFilter === "all" || (crew.zone?.name === zoneFilter)
+        const matchesBuilding = buildingFilter === "all" || (crew.building?.name === buildingFilter)
 
-        return matchesSearch && matchesStatus && matchesRole && matchesZone
+        return matchesSearch && matchesStatus && matchesRole && matchesBuilding
     })
 
     if (loading) {
@@ -78,9 +78,9 @@ export default function CrewManagement() {
                 onStatusChange={setStatusFilter}
                 roleFilter={roleFilter}
                 onRoleChange={setRoleFilter}
-                zoneFilter={zoneFilter}
-                onZoneChange={setZoneFilter}
-                zones={zones}
+                buildingFilter={buildingFilter}
+                onBuildingChange={setBuildingFilter}
+                buildings={buildings}
             />
 
             <CrewTable crews={filteredCrews} onDataChange={fetchData} />

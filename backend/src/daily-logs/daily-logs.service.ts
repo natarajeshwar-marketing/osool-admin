@@ -41,6 +41,12 @@ export class DailyLogsService implements OnModuleInit {
             .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Technician\' THEN daily_log.hoursWorked ELSE 0 END)', 'techWorked')
             .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Cleaner\' THEN daily_log.hoursWorked ELSE 0 END)', 'cleanerWorked')
 
+            // Role specific revenue
+            .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Cleaner\' THEN daily_log.totalRevenue ELSE 0 END)', 'cleaningRevenue')
+            .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Technician\' THEN daily_log.totalRevenue ELSE 0 END)', 'maintenanceRevenue')
+            .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Car Washer\' THEN daily_log.totalRevenue ELSE 0 END)', 'carWashRevenue')
+            .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Pest Control\' THEN daily_log.totalRevenue ELSE 0 END)', 'pestControlRevenue')
+
             // Role specific scheduled hours (Capacity)
             .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Technician\' THEN daily_log.snapshotScheduledHours ELSE 0 END)', 'techScheduled')
             .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Cleaner\' THEN daily_log.snapshotScheduledHours ELSE 0 END)', 'cleanerScheduled')
@@ -63,6 +69,10 @@ export class DailyLogsService implements OnModuleInit {
         // Global Totals from aggregation
         let activeCrews = 0;
         let totalRevenue = 0;
+        let cleaningRevenue = 0;
+        let maintenanceRevenue = 0;
+        let carWashRevenue = 0;
+        let pestControlRevenue = 0;
         let globalWorked = 0;
         let globalScheduled = 0;
 
@@ -76,6 +86,10 @@ export class DailyLogsService implements OnModuleInit {
             const logActive = parseInt(row.activeCrews) || 0;
 
             totalRevenue += logRevenue;
+            cleaningRevenue += parseFloat(row.cleaningRevenue) || 0;
+            maintenanceRevenue += parseFloat(row.maintenanceRevenue) || 0;
+            carWashRevenue += parseFloat(row.carWashRevenue) || 0;
+            pestControlRevenue += parseFloat(row.pestControlRevenue) || 0;
             globalWorked += logWorked;
             globalScheduled += logScheduled;
             // activeCrews sum from groups might overlap if crew moved zones? 
@@ -166,6 +180,10 @@ export class DailyLogsService implements OnModuleInit {
             activeCrews,
             utilizationRate,
             totalRevenue,
+            cleaningRevenue,
+            maintenanceRevenue,
+            carWashRevenue,
+            pestControlRevenue,
             totalZones,
             zoneAllocation
         };

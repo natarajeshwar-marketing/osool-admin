@@ -15,25 +15,25 @@ const activities = [
         id: 1,
         activity: "Site A - Foundation Pouring",
         lead: "Mike Ross",
-        zone: "#ZN-4591",
+        building: "#ZN-4591",
         date: "Sep 19, 2024",
         status: "Completed",
         icon: Home // Placeholder
     },
     {
         id: 2,
-        activity: "Zone B - Wiring Setup",
+        activity: "Building B - Wiring Setup",
         lead: "Rachel Zane",
-        zone: "#ZN-4592",
+        building: "#ZN-4592",
         date: "Sep 19, 2024",
         status: "In Progress",
         icon: RefreshCcw // Placeholder
     },
     {
         id: 3,
-        activity: "Zone C - Pipe Inspection",
+        activity: "Building C - Pipe Inspection",
         lead: "Harvey Specter",
-        zone: "#ZN-4593",
+        building: "#ZN-4593",
         date: "Sep 18, 2024",
         status: "Scheduled",
         icon: HardHat // Placeholder
@@ -60,7 +60,7 @@ export function ActivitiesTable() {
                         <TableRow>
                             <TableHead className="w-[300px]">ACTIVITY</TableHead>
                             <TableHead>CREW LEAD</TableHead>
-                            <TableHead>ZONE ID</TableHead>
+                            <TableHead>BUILDING ID</TableHead>
                             <TableHead>DATE</TableHead>
                             <TableHead className="text-right">STATUS</TableHead>
                         </TableRow>
@@ -80,7 +80,7 @@ export function ActivitiesTable() {
                                     </div>
                                 </TableCell>
                                 <TableCell>{item.lead}</TableCell>
-                                <TableCell className="text-muted-foreground">{item.zone}</TableCell>
+                                <TableCell className="text-muted-foreground">{item.building}</TableCell>
                                 <TableCell className="text-muted-foreground">{item.date}</TableCell>
                                 <TableCell className="text-right">
                                     <StatusBadge status={item.status} />

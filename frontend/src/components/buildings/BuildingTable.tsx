@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MoreHorizontal } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
-import type { Zone, Crew } from "@/types"
+import type { Building, Crew } from "@/types"
 import { toast } from "sonner"
 import {
     DropdownMenu,
@@ -29,35 +29,35 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { AddZoneModal } from "@/components/zones/AddZoneModal"
+import { AddBuildingModal } from "@/components/buildings/AddBuildingModal"
 
-interface ZoneTableProps {
-    zones: Zone[]
+interface BuildingTableProps {
+    buildings: Building[]
     crews: Crew[]
-    onZoneUpdated?: () => void
+    onBuildingUpdated?: () => void
 }
 
-export function ZoneTable({ zones, crews, onZoneUpdated }: ZoneTableProps) {
+export function BuildingTable({ buildings, crews, onBuildingUpdated }: BuildingTableProps) {
     const handleDelete = async (id: string) => {
         try {
-            await fetch(`${import.meta.env.VITE_API_URL}/zones/${id}`, {
+            await fetch(`${import.meta.env.VITE_API_URL}/buildings/${id}`, {
                 method: 'DELETE'
             })
-            toast.success("Zone deleted successfully")
-            if (onZoneUpdated) onZoneUpdated()
+            toast.success("Building deleted successfully")
+            if (onBuildingUpdated) onBuildingUpdated()
         } catch (error) {
-            toast.error("Failed to delete zone")
-            console.error("Failed to delete zone", error)
+            toast.error("Failed to delete building")
+            console.error("Failed to delete building", error)
         }
     }
 
-    const getZoneMetrics = (zone: Zone) => {
-        const zoneCrews = crews.filter(crew => crew.zone?.id === zone.id)
-        const totalCrews = zoneCrews.length
+    const getBuildingMetrics = (building: Building) => {
+        const buildingCrews = crews.filter(crew => crew.building?.id === building.id)
+        const totalCrews = buildingCrews.length
         return {
             totalCrews,
-            totalUtilization: zone.utilization || 0,
-            revenue: zone.totalRevenue || 0
+            totalUtilization: building.utilization || 0,
+            revenue: building.totalRevenue || 0
         }
     }
 
@@ -67,7 +67,7 @@ export function ZoneTable({ zones, crews, onZoneUpdated }: ZoneTableProps) {
                 <Table>
                     <TableHeader className="sticky top-0 z-10 bg-background">
                         <TableRow>
-                            <TableHead className="py-4 px-4 bg-muted/50">ZONE NAME</TableHead>
+                            <TableHead className="py-4 px-4 bg-muted/50">BUILDING NAME</TableHead>
                             <TableHead className="text-center py-4 px-4 bg-muted/50">TOTAL CREWS</TableHead>
                             <TableHead className="text-center py-4 px-4 bg-muted/50">TOTAL UTILIZATION</TableHead>
                             <TableHead className="py-4 px-4 bg-muted/50">STATUS</TableHead>
@@ -76,11 +76,11 @@ export function ZoneTable({ zones, crews, onZoneUpdated }: ZoneTableProps) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {zones.map((zone) => {
-                            const { totalCrews, totalUtilization, revenue } = getZoneMetrics(zone)
+                        {buildings.map((building) => {
+                            const { totalCrews, totalUtilization, revenue } = getBuildingMetrics(building)
                             return (
-                                <TableRow key={zone.id} className="hover:bg-muted/5">
-                                    <TableCell className="font-semibold py-4 px-4">{zone.name}</TableCell>
+                                <TableRow key={building.id} className="hover:bg-muted/5">
+                                    <TableCell className="font-semibold py-4 px-4">{building.name}</TableCell>
                                     <TableCell className="text-center py-4 px-4">{totalCrews}</TableCell>
                                     <TableCell className="text-center py-4 px-4">
                                         {totalCrews > 0 ? (
@@ -94,12 +94,12 @@ export function ZoneTable({ zones, crews, onZoneUpdated }: ZoneTableProps) {
                                     <TableCell className="py-4 px-4">
                                         <Badge
                                             variant="secondary"
-                                            className={`font-normal ${zone.status === "Active"
+                                            className={`font-normal ${building.status === "Active"
                                                 ? "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
                                                 : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-400"
                                                 }`}
                                         >
-                                            {zone.status}
+                                            {building.status}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right py-4 px-4 font-medium">
@@ -114,11 +114,11 @@ export function ZoneTable({ zones, crews, onZoneUpdated }: ZoneTableProps) {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <AddZoneModal zone={zone} onSave={onZoneUpdated}>
+                                                <AddBuildingModal building={building} onSave={onBuildingUpdated}>
                                                     <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                                                         Edit
                                                     </DropdownMenuItem>
-                                                </AddZoneModal>
+                                                </AddBuildingModal>
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
                                                         <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600">
@@ -129,13 +129,13 @@ export function ZoneTable({ zones, crews, onZoneUpdated }: ZoneTableProps) {
                                                         <AlertDialogHeader>
                                                             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                                                             <AlertDialogDescription>
-                                                                This action cannot be undone. This will permanently delete the zone
+                                                                This action cannot be undone. This will permanently delete the building
                                                                 and remove its data from the servers.
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
                                                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleDelete(zone.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                                            <AlertDialogAction onClick={() => handleDelete(building.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>
                                                 </AlertDialog>

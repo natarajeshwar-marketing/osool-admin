@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
 
-import type { Crew, Zone } from "@/types"
+import type { Crew, Building } from "@/types"
 
 interface AddCrewModalProps {
     children: React.ReactNode
@@ -39,20 +39,20 @@ export function AddCrewModal({ children, crew, onSave }: AddCrewModalProps) {
     const [lastName, setLastName] = useState("")
     const [role, setRole] = useState("")
     const [date, setDate] = useState<Date>()
-    const [zoneId, setZoneId] = useState("")
+    const [buildingId, setBuildingId] = useState("")
     const [status, setStatus] = useState("Active")
     const [scheduledHours, setScheduledHours] = useState("8")
     const [open, setOpen] = useState(false)
-    const [zones, setZones] = useState<Zone[]>([])
+    const [buildings, setBuildings] = useState<Building[]>([])
     const [loading, setLoading] = useState(false)
 
-    // Fetch Zones
+    // Fetch Buildings
     useEffect(() => {
         if (open) {
-            fetch(`${import.meta.env.VITE_API_URL}/zones`)
+            fetch(`${import.meta.env.VITE_API_URL}/buildings`)
                 .then(res => res.json())
-                .then(data => setZones(data))
-                .catch(err => console.error("Failed to fetch zones", err))
+                .then(data => setBuildings(data))
+                .catch(err => console.error("Failed to fetch buildings", err))
         }
     }, [open])
 
@@ -67,7 +67,7 @@ export function AddCrewModal({ children, crew, onSave }: AddCrewModalProps) {
             } catch (e) {
                 console.error("Invalid date", e)
             }
-            setZoneId(crew.zone?.id || "")
+            setBuildingId(crew.building?.id || "")
             setStatus(crew.status)
             setScheduledHours(String(crew.scheduledHours || "8"))
         } else if (!crew && open) {
@@ -75,7 +75,7 @@ export function AddCrewModal({ children, crew, onSave }: AddCrewModalProps) {
             setLastName("")
             setRole("")
             setDate(undefined)
-            setZoneId("")
+            setBuildingId("")
             setStatus("Active")
             setScheduledHours("8")
         }
@@ -84,7 +84,7 @@ export function AddCrewModal({ children, crew, onSave }: AddCrewModalProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!date || !zoneId) return;
+        if (!date || !buildingId) return;
 
         setLoading(true)
         const payload = {
@@ -92,7 +92,7 @@ export function AddCrewModal({ children, crew, onSave }: AddCrewModalProps) {
             lastName,
             role,
             dateOfJoining: format(date, 'yyyy-MM-dd'),
-            zoneId,
+            buildingId,
             status,
             scheduledHours: parseFloat(scheduledHours) || 0
         }
@@ -167,6 +167,8 @@ export function AddCrewModal({ children, crew, onSave }: AddCrewModalProps) {
                             <SelectContent>
                                 <SelectItem value="Technician">Technician</SelectItem>
                                 <SelectItem value="Cleaner">Cleaner</SelectItem>
+                                <SelectItem value="Car Washer">Car Washer</SelectItem>
+                                <SelectItem value="Pest Control">Pest Control</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -175,13 +177,13 @@ export function AddCrewModal({ children, crew, onSave }: AddCrewModalProps) {
                         <DatePicker date={date} setDate={setDate} />
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="zone">Zone</Label>
-                        <Select onValueChange={setZoneId} value={zoneId} required>
+                        <Label htmlFor="building">Building</Label>
+                        <Select onValueChange={setBuildingId} value={buildingId} required>
                             <SelectTrigger>
-                                <SelectValue placeholder="Select zone" />
+                                <SelectValue placeholder="Select building" />
                             </SelectTrigger>
                             <SelectContent>
-                                {zones.map((z) => (
+                                {buildings.map((z) => (
                                     <SelectItem key={z.id} value={z.id}>
                                         {z.name}
                                     </SelectItem>

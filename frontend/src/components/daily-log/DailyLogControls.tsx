@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { DatePicker } from "@/components/ui/date-picker"
-// import { mockZones } from "@/data/mockData"
-import type { Zone } from "@/types"
+// import { mockBuildings } from "@/data/mockData"
+import type { Building } from "@/types"
 
 interface DailyStats {
     totalRevenue: number
@@ -20,21 +20,21 @@ interface DailyStats {
 interface DailyLogControlsProps {
     date: Date | undefined
     setDate: (date: Date | undefined) => void
-    selectedZone: string
-    handleZoneChange: (zoneId: string) => void
+    selectedBuilding: string
+    handleBuildingChange: (buildingId: string) => void
     dailyStats: DailyStats
-    zones: Zone[]
-    submittedZoneIds: Set<string>
+    buildings: Building[]
+    submittedBuildingIds: Set<string>
 }
 
 export function DailyLogControls({
     date,
     setDate,
-    selectedZone,
-    handleZoneChange,
+    selectedBuilding,
+    handleBuildingChange,
     dailyStats,
-    zones,
-    submittedZoneIds
+    buildings,
+    submittedBuildingIds
 }: DailyLogControlsProps) {
     return (
         <Card className="border-l-4 border-l-[#011f5f] shadow-sm">
@@ -49,20 +49,20 @@ export function DailyLogControls({
 
                     <div className="space-y-2 w-full md:w-auto">
                         <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            Select Zone
+                            Select Building
                         </label>
-                        <Select value={selectedZone} onValueChange={handleZoneChange}>
+                        <Select value={selectedBuilding} onValueChange={handleBuildingChange}>
                             <SelectTrigger className="w-full md:w-[240px] bg-white">
-                                <SelectValue placeholder="Choose a zone..." />
+                                <SelectValue placeholder="Choose a building..." />
                             </SelectTrigger>
                             <SelectContent>
-                                {zones.map(zone => {
-                                    const isSubmitted = submittedZoneIds.has(zone.id);
+                                {buildings.map(building => {
+                                    const isSubmitted = submittedBuildingIds.has(building.id);
                                     return (
-                                        <SelectItem key={zone.id} value={zone.id}>
+                                        <SelectItem key={building.id} value={building.id}>
                                             <div className="flex items-center justify-between w-full gap-4 min-w-[200px]">
-                                                <span className="font-medium">{zone.name}</span>
-                                                {selectedZone !== zone.id && (
+                                                <span className="font-medium">{building.name}</span>
+                                                {selectedBuilding !== building.id && (
                                                     <span className={cn(
                                                         "text-[10px] px-2 py-0.5 rounded-full uppercase font-bold tracking-wider",
                                                         isSubmitted
@@ -81,8 +81,8 @@ export function DailyLogControls({
                     </div>
                 </div>
 
-                {/* Live Summary Stats (Only visible when zone selected) */}
-                {selectedZone && (
+                {/* Live Summary Stats (Only visible when building selected) */}
+                {selectedBuilding && (
                     <div className="flex gap-6 py-2 px-4 bg-muted/30 rounded-lg border border-dashed md:ml-auto w-full md:w-auto mt-4 md:mt-0">
                         <div className="flex flex-col">
                             <span className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Est. Revenue</span>

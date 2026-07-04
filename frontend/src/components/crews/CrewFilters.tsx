@@ -7,7 +7,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import type { Zone } from "@/types"
+import type { Building } from "@/types"
 
 interface CrewFiltersProps {
     searchTerm: string
@@ -16,9 +16,9 @@ interface CrewFiltersProps {
     onStatusChange: (value: string) => void
     roleFilter: string
     onRoleChange: (value: string) => void
-    zoneFilter: string
-    onZoneChange: (value: string) => void
-    zones: Zone[]
+    buildingFilter: string
+    onBuildingChange: (value: string) => void
+    buildings: Building[]
 }
 
 export function CrewFilters({
@@ -28,9 +28,9 @@ export function CrewFilters({
     onStatusChange,
     roleFilter,
     onRoleChange,
-    zoneFilter,
-    onZoneChange,
-    zones
+    buildingFilter,
+    onBuildingChange,
+    buildings
 }: CrewFiltersProps) {
     return (
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -70,16 +70,16 @@ export function CrewFilters({
                     </SelectContent>
                 </Select>
 
-                {/* Zone Filter */}
-                <Select value={zoneFilter} onValueChange={onZoneChange}>
+                {/* Building Filter */}
+                <Select value={buildingFilter} onValueChange={onBuildingChange}>
                     <SelectTrigger className="w-[160px] bg-white dark:bg-neutral-950">
-                        <SelectValue placeholder="Zone" />
+                        <SelectValue placeholder="Building" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All Zones</SelectItem>
-                        {zones.map((zone) => (
-                            <SelectItem key={zone.id} value={zone.name}>
-                                {zone.name}
+                        <SelectItem value="all">All Buildings</SelectItem>
+                        {buildings.map((building) => (
+                            <SelectItem key={building.id} value={building.name}>
+                                {building.name}
                             </SelectItem>
                         ))}
                     </SelectContent>

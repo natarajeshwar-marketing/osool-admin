@@ -11,12 +11,12 @@ import { PieChart } from "lucide-react"
 
 ChartJS.register(ArcElement, Tooltip, Legend, ChartDataLabels);
 
-interface ZoneUtilizationPieChartProps {
+interface BuildingUtilizationPieChartProps {
     data?: any[]
 }
 
-export function ZoneUtilizationPieChart({ data: propData }: ZoneUtilizationPieChartProps) {
-    const labels = propData?.map(d => d.zoneName) || []
+export function BuildingUtilizationPieChart({ data: propData }: BuildingUtilizationPieChartProps) {
+    const labels = propData?.map(d => d.buildingName) || []
     // Use workedHours for the pie slices (Share of Work)
     const workedHoursData = propData?.map(d => d.workedHours !== undefined ? parseFloat(d.workedHours) : 0) || []
     const totalWorked = workedHoursData.reduce((a, b) => a + b, 0);
@@ -89,7 +89,7 @@ export function ZoneUtilizationPieChart({ data: propData }: ZoneUtilizationPieCh
     return (
         <Card className="col-span-1">
             <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Utilization percentage per zone</CardTitle>
+                <CardTitle>Utilization percentage per building</CardTitle>
                 <div className="h-8 w-8 rounded-full bg-neutral-100 flex items-center justify-center cursor-pointer hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700">
                     <PieChart className="h-4 w-4 text-neutral-500" />
                 </div>

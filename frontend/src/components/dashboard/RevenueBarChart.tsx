@@ -27,13 +27,7 @@ const options = {
     maintainAspectRatio: false,
     plugins: {
         legend: {
-            display: true,
-            position: 'top' as const,
-            align: 'end' as const,
-            labels: {
-                usePointStyle: true,
-                boxWidth: 6
-            }
+            display: false,
         },
         tooltip: {
             backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -41,7 +35,7 @@ const options = {
             cornerRadius: 8,
             callbacks: {
                 label: function (context: any) {
-                    return context.dataset.label + ': ' + context.parsed.y + '%';
+                    return 'SAR ' + context.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 }
             }
         },
@@ -52,7 +46,13 @@ const options = {
                 size: 12
             },
             formatter: (value: any) => {
-                return value > 0 ? value + '%' : ''; // Hide 0% or empty
+                if (value > 0) {
+                    if (value >= 1000) {
+                        return 'SAR ' + (value / 1000).toFixed(1) + 'k';
+                    }
+                    return 'SAR ' + value.toLocaleString(undefined, { maximumFractionDigits: 0 });
+                }
+                return '';
             },
             anchor: 'center' as const,
             align: 'center' as const,
@@ -74,7 +74,7 @@ const options = {
             }
         },
         y: {
-            max: 100, // Percentage scale
+            beginAtZero: true,
             grid: {
                 display: false,
             },
@@ -84,7 +84,10 @@ const options = {
                     size: 12
                 },
                 callback: function (value: any) {
-                    return value + '%';
+                    if (value >= 1000) {
+                        return 'SAR ' + (value / 1000).toFixed(1) + 'k';
+                    }
+                    return 'SAR ' + value;
                 }
             },
             border: {
@@ -96,29 +99,30 @@ const options = {
     categoryPercentage: 0.8,
 };
 
-interface AllocationChartProps {
-    data?: any[]
+interface RevenueBarChartProps {
+    data: {
+        cleaning: number;
+        maintenance: number;
+        carWash: number;
+        pestControl: number;
+    }
 }
 
-export function AllocationChart({ data: propData }: AllocationChartProps) {
-    const labels = propData?.map(d => d.buildingName) || ['Building A', 'Building B', 'Building C', 'Building D', 'Building E', 'Building F']
-    // Fallback data is just for skeleton/loading appearance essentially
-    const technicianData = propData?.map(d => d.technicianUtilization ?? 0) || [0, 0, 0, 0, 0, 0]
-    const cleanerData = propData?.map(d => d.cleanerUtilization ?? 0) || [0, 0, 0, 0, 0, 0]
-
+export function RevenueBarChart({ data }: RevenueBarChartProps) {
+    const labels = ['Cleaning', 'Maintenance', 'Car Wash', 'Pest Control'];
+    
     const chartData = {
         labels,
         datasets: [
             {
-                label: 'Technician',
-                data: technicianData,
-                backgroundColor: '#f97316', // Orange-500
-                borderRadius: 4,
-            },
-            {
-                label: 'Cleaner',
-                data: cleanerData,
-                backgroundColor: '#3b82f6', // Blue-500
+                label: 'Revenue',
+                data: [data.cleaning || 0, data.maintenance || 0, data.carWash || 0, data.pestControl || 0],
+                backgroundColor: [
+                    '#2563eb', // Blue-600
+                    '#d97706', // Amber-600
+                    '#0891b2', // Cyan-600
+                    '#059669', // Emerald-600
+                ],
                 borderRadius: 4,
             },
         ],
@@ -127,7 +131,7 @@ export function AllocationChart({ data: propData }: AllocationChartProps) {
     return (
         <Card className="col-span-4 lg:col-span-3">
             <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Crew allocation by role</CardTitle>
+                <CardTitle>Revenue by Service</CardTitle>
                 <div className="h-8 w-8 rounded-full bg-neutral-100 flex items-center justify-center cursor-pointer hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700">
                     <ArrowUpRight className="h-4 w-4 text-neutral-500" />
                 </div>

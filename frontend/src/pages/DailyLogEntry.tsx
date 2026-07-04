@@ -1,40 +1,40 @@
 import { useState, useMemo, useEffect } from "react"
-// import { mockZones, mockCrews } from "@/data/mockData"
+// import { mockBuildings, mockCrews } from "@/data/mockData"
 import { DailyLogControls } from "@/components/daily-log/DailyLogControls"
 import { DailyLogTable } from "@/components/daily-log/DailyLogTable"
 import { DailyLogEmptyState } from "@/components/daily-log/DailyLogEmptyState"
 import type { LogEntry } from "@/components/daily-log/types"
-import type { Crew, Zone } from "@/types"
+import type { Crew, Building } from "@/types"
 import { toast } from "sonner"
 import { format } from "date-fns"
 
 export default function DailyLogEntry() {
     const [date, setDate] = useState<Date | undefined>(new Date())
-    const [selectedZone, setSelectedZone] = useState<string>("")
+    const [selectedBuilding, setSelectedBuilding] = useState<string>("")
     const [entries, setEntries] = useState<Record<string, LogEntry>>({})
 
     // Data states
     const [crews, setCrews] = useState<Crew[]>([])
-    const [zones, setZones] = useState<Zone[]>([])
+    const [buildings, setBuildings] = useState<Building[]>([])
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
-    const [submittedZoneIds, setSubmittedZoneIds] = useState<Set<string>>(new Set())
+    const [submittedBuildingIds, setSubmittedBuildingIds] = useState<Set<string>>(new Set())
     const [allLogsForDate, setAllLogsForDate] = useState<any[]>([])
 
-    // Fetch initial data (Crews & Zones)
+    // Fetch initial data (Crews & Buildings)
     useEffect(() => {
         const fetchInitialData = async () => {
             setLoading(true)
             try {
-                const [crewsRes, zonesRes] = await Promise.all([
+                const [crewsRes, buildingsRes] = await Promise.all([
                     fetch(`${import.meta.env.VITE_API_URL}/crews`),
-                    fetch(`${import.meta.env.VITE_API_URL}/zones`)
+                    fetch(`${import.meta.env.VITE_API_URL}/buildings`)
                 ])
-                setZones(await zonesRes.json())
+                setBuildings(await buildingsRes.json())
                 setCrews(await crewsRes.json())
             } catch (err) {
                 console.error("Failed to fetch initial data", err)
-                toast.error("Failed to load crews and zones")
+                toast.error("Failed to load crews and buildings")
             } finally {
                 setLoading(false)
             }
@@ -53,19 +53,19 @@ export default function DailyLogEntry() {
                 const { data } = await res.json()
                 setAllLogsForDate(data || [])
 
-                // Identify submitted zones
-                // Identify submitted zones
+                // Identify submitted buildings
+                // Identify submitted buildings
                 const submitted = new Set<string>()
                 if (data) {
                     data.forEach((log: any) => {
-                        // Priority: use snapshotZoneId (historical truth) -> then crew.zone.id (fallback/current)
-                        const zoneId = log.snapshotZoneId || (log.crew && log.crew.zone ? log.crew.zone.id : null)
-                        if (zoneId) {
-                            submitted.add(zoneId)
+                        // Priority: use snapshotBuildingId (historical truth) -> then crew.building.id (fallback/current)
+                        const buildingId = log.snapshotBuildingId || (log.crew && log.crew.building ? log.crew.building.id : null)
+                        if (buildingId) {
+                            submitted.add(buildingId)
                         }
                     })
                 }
-                setSubmittedZoneIds(submitted)
+                setSubmittedBuildingIds(submitted)
             } catch (err) {
                 console.error("Failed to fetch logs", err)
             }
@@ -73,21 +73,21 @@ export default function DailyLogEntry() {
         fetchLogs()
     }, [date])
 
-    // Populate entries when zone or allLogs changes
+    // Populate entries when building or allLogs changes
     useEffect(() => {
-        if (!selectedZone || selectedZone === "") {
+        if (!selectedBuilding || selectedBuilding === "") {
             setEntries({})
             return
         };
 
-        const zoneLogs = allLogsForDate.filter((log: any) => {
-            const logZoneId = log.snapshotZoneId || (log.crew && log.crew.zone ? log.crew.zone.id : null)
-            return selectedZone === "all" || logZoneId === selectedZone
+        const buildingLogs = allLogsForDate.filter((log: any) => {
+            const logBuildingId = log.snapshotBuildingId || (log.crew && log.crew.building ? log.crew.building.id : null)
+            return selectedBuilding === "all" || logBuildingId === selectedBuilding
         })
 
-        if (zoneLogs.length > 0) {
+        if (buildingLogs.length > 0) {
             const newEntries: Record<string, LogEntry> = {}
-            zoneLogs.forEach((log: any) => {
+            buildingLogs.forEach((log: any) => {
                 newEntries[log.crewId] = {
                     hoursWorked: String(log.hoursWorked),
                     jobsCompleted: String(log.jobsCompleted),
@@ -100,19 +100,19 @@ export default function DailyLogEntry() {
             setEntries({})
         }
 
-    }, [selectedZone, allLogsForDate])
+    }, [selectedBuilding, allLogsForDate])
 
-    // Filter crews based on selected zone
+    // Filter crews based on selected building
     const activeCrews = useMemo(() => {
-        if (!selectedZone) return []
+        if (!selectedBuilding) return []
         return crews.filter(crew =>
             crew.status === "Active" &&
-            (selectedZone === "all" || crew.zone?.id === selectedZone)
+            (selectedBuilding === "all" || crew.building?.id === selectedBuilding)
         )
-    }, [selectedZone, crews])
+    }, [selectedBuilding, crews])
 
-    const handleZoneChange = (zoneId: string) => {
-        setSelectedZone(zoneId)
+    const handleBuildingChange = (buildingId: string) => {
+        setSelectedBuilding(buildingId)
     }
 
     const handleEntryChange = (crewId: string, field: keyof LogEntry, value: string) => {
@@ -151,7 +151,7 @@ export default function DailyLogEntry() {
         const logsToSave = activeCrews.map(crew => {
             const entry = entries[crew.id]
             // Skip empty entries if you prefer, or save 0s
-            // For now, we save everything for active crews in this zone
+            // For now, we save everything for active crews in this building
             const totalRev = parseFloat(entry?.totalRevenue || '0')
             const jobs = parseInt(entry?.jobsCompleted || '0', 10)
 
@@ -205,18 +205,18 @@ export default function DailyLogEntry() {
             <DailyLogControls
                 date={date}
                 setDate={setDate}
-                selectedZone={selectedZone}
-                handleZoneChange={handleZoneChange}
+                selectedBuilding={selectedBuilding}
+                handleBuildingChange={handleBuildingChange}
                 dailyStats={dailyStats}
-                zones={zones}
-                submittedZoneIds={submittedZoneIds}
+                buildings={buildings}
+                submittedBuildingIds={submittedBuildingIds}
             />
 
             {loading ? (
                 <div className="flex justify-center p-12">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
-            ) : selectedZone ? (
+            ) : selectedBuilding ? (
                 <DailyLogTable
                     activeCrews={activeCrews}
                     entries={entries}

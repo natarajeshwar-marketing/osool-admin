@@ -74,7 +74,7 @@ export function DailyLogTable({
                         {activeCrews.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                                    No active crews found assigned to this zone.
+                                    No active crews found assigned to this building.
                                 </TableCell>
                             </TableRow>
                         ) : (

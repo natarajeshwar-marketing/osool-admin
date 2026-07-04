@@ -3,14 +3,14 @@
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
-import { ZoneFilters } from "@/components/zones/ZoneFilters"
-import { ZoneTable } from "@/components/zones/ZoneTable"
-import { AddZoneModal } from "@/components/zones/AddZoneModal"
+import { BuildingFilters } from "@/components/buildings/BuildingFilters"
+import { BuildingTable } from "@/components/buildings/BuildingTable"
+import { AddBuildingModal } from "@/components/buildings/AddBuildingModal"
 import { Spinner } from "@/components/ui/spinner"
-import type { Zone, Crew } from "@/types"
+import type { Building, Crew } from "@/types"
 
-export default function ZoneManagement() {
-    const [zones, setZones] = useState<Zone[]>([])
+export default function BuildingManagement() {
+    const [buildings, setBuildings] = useState<Building[]>([])
     const [crews, setCrews] = useState<Crew[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -20,18 +20,18 @@ export default function ZoneManagement() {
 
     const fetchData = useCallback(async () => {
         try {
-            const [zonesRes, crewsRes] = await Promise.all([
-                fetch(`${import.meta.env.VITE_API_URL}/zones`),
+            const [buildingsRes, crewsRes] = await Promise.all([
+                fetch(`${import.meta.env.VITE_API_URL}/buildings`),
                 fetch(`${import.meta.env.VITE_API_URL}/crews`)
             ])
 
-            const zonesData = await zonesRes.json()
+            const buildingsData = await buildingsRes.json()
             const crewsData = await crewsRes.json()
 
-            setZones(zonesData)
+            setBuildings(buildingsData)
             setCrews(crewsData)
         } catch (error) {
-            console.error("Failed to fetch zone data", error)
+            console.error("Failed to fetch building data", error)
         } finally {
             setLoading(false)
         }
@@ -41,11 +41,11 @@ export default function ZoneManagement() {
         fetchData()
     }, [fetchData])
 
-    const filteredZones = zones.filter(zone => {
-        const matchesSearch = zone.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            zone.id.toLowerCase().includes(searchTerm.toLowerCase())
-        const matchesStatus = statusFilter === "all" || zone.status.toLowerCase() === statusFilter.toLowerCase()
-        const matchesType = typeFilter === "all" || zone.type.toLowerCase() === typeFilter.toLowerCase()
+    const filteredBuildings = buildings.filter(building => {
+        const matchesSearch = building.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            building.id.toLowerCase().includes(searchTerm.toLowerCase())
+        const matchesStatus = statusFilter === "all" || building.status.toLowerCase() === statusFilter.toLowerCase()
+        const matchesType = typeFilter === "all" || building.type.toLowerCase() === typeFilter.toLowerCase()
 
         return matchesSearch && matchesStatus && matchesType
     })
@@ -62,21 +62,21 @@ export default function ZoneManagement() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Zone Management</h2>
-                    <p className="text-muted-foreground">Manage operational zones and their status.</p>
+                    <h2 className="text-2xl font-bold tracking-tight">Building Management</h2>
+                    <p className="text-muted-foreground">Manage operational buildings and their status.</p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <AddZoneModal onSave={fetchData}>
+                    <AddBuildingModal onSave={fetchData}>
                         <Button className="bg-[#011f5f] hover:bg-[#022a80]">
-                            <Plus className="mr-2 h-4 w-4" /> Add New Zone
+                            <Plus className="mr-2 h-4 w-4" /> Add New Building
                         </Button>
-                    </AddZoneModal>
+                    </AddBuildingModal>
                 </div>
             </div>
 
-            {/* <ZoneStats zones={zones} crews={crews} /> */}
+            {/* <BuildingStats buildings={buildings} crews={crews} /> */}
 
-            <ZoneFilters
+            <BuildingFilters
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
                 statusFilter={statusFilter}
@@ -85,10 +85,10 @@ export default function ZoneManagement() {
                 onTypeChange={setTypeFilter}
             />
 
-            <ZoneTable
-                zones={filteredZones}
+            <BuildingTable
+                buildings={filteredBuildings}
                 crews={crews}
-                onZoneUpdated={fetchData}
+                onBuildingUpdated={fetchData}
             />
         </div>
     )

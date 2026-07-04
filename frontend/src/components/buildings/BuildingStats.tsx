@@ -1,13 +1,13 @@
 import { StatCard } from "@/components/shared/StatCard"
 import { MapPin, Percent, DollarSign } from "lucide-react"
-import type { Zone, Crew } from "@/types"
+import type { Building, Crew } from "@/types"
 
-interface ZoneStatsProps {
-    zones: Zone[]
+interface BuildingStatsProps {
+    buildings: Building[]
     crews: Crew[]
 }
 
-export function ZoneStats({ zones, crews }: ZoneStatsProps) {
+export function BuildingStats({ buildings, crews }: BuildingStatsProps) {
     const totalUtilization = crews.length > 0
         ? Math.round(crews.reduce((acc, crew) => acc + crew.efficiency, 0) / crews.length)
         : 0
@@ -15,8 +15,8 @@ export function ZoneStats({ zones, crews }: ZoneStatsProps) {
     return (
         <div className="grid gap-4 md:grid-cols-3">
             <StatCard
-                title="Total Zones"
-                value={zones.length.toString()}
+                title="Total Buildings"
+                value={buildings.length.toString()}
                 className=""
                 icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
             />

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 
-// We need a slightly different type for the history view as it includes the Crew and Zone objects populated
+// We need a slightly different type for the history view as it includes the Crew and Building objects populated
 interface HistoryLogEntry {
     id: number
     date: string
@@ -19,14 +19,14 @@ interface HistoryLogEntry {
     revenuePerJob: number
     totalRevenue: number
     snapshotRole?: string
-    snapshotZone?: {
+    snapshotBuilding?: {
         name: string
     }
     crew: {
         firstName: string
         lastName: string
         role: string
-        zone?: {
+        building?: {
             name: string
         }
     }
@@ -71,7 +71,7 @@ export function LogsHistoryTable({ logs, loading }: LogsHistoryTableProps) {
                             <TableHead className="w-[150px] pl-6">Date</TableHead>
                             <TableHead>Crew Member</TableHead>
                             <TableHead>Role</TableHead>
-                            <TableHead>Zone</TableHead>
+                            <TableHead>Building</TableHead>
                             <TableHead className="text-center">Hours</TableHead>
                             <TableHead className="text-center">Jobs</TableHead>
                             <TableHead className="text-right pr-6">Total Rev</TableHead>
@@ -98,7 +98,7 @@ export function LogsHistoryTable({ logs, loading }: LogsHistoryTableProps) {
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="outline" className="font-normal">
-                                            {log.snapshotZone?.name || log.crew?.zone?.name || 'Unassigned'}
+                                            {log.snapshotBuilding?.name || log.crew?.building?.name || 'Unassigned'}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-center">{Number(log.hoursWorked)}</TableCell>

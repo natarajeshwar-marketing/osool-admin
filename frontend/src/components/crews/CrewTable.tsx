@@ -84,7 +84,7 @@ export function CrewTable({ crews, onDataChange }: CrewTableProps) {
                             <TableHead className="w-[100px] py-4 px-4 bg-muted/50">ID</TableHead>
                             <TableHead className="py-4 px-4 bg-muted/50">CREW NAME</TableHead>
                             <TableHead className="py-4 px-4 bg-muted/50">JOINING DATE</TableHead>
-                            <TableHead className="py-4 px-4 bg-muted/50">CURRENT ZONE</TableHead>
+                            <TableHead className="py-4 px-4 bg-muted/50">CURRENT BUILDING</TableHead>
                             <TableHead className="text-center py-4 px-4 bg-muted/50">ROLE</TableHead>
                             <TableHead className="text-center py-4 px-4 bg-muted/50">SCHEDULED HOURS</TableHead>
                             <TableHead className="py-4 px-4 bg-muted/50">STATUS</TableHead>
@@ -98,7 +98,7 @@ export function CrewTable({ crews, onDataChange }: CrewTableProps) {
                                 <TableCell className="font-medium text-muted-foreground py-4 px-4">{crew.id}</TableCell>
                                 <TableCell className="font-semibold py-4 px-4">{crew.firstName} {crew.lastName}</TableCell>
                                 <TableCell className="py-4 px-4 text-muted-foreground">{formatDate(crew.dateOfJoining)}</TableCell>
-                                <TableCell className="py-4 px-4">{crew.zone?.name || 'N/A'}</TableCell>
+                                <TableCell className="py-4 px-4">{crew.building?.name || 'N/A'}</TableCell>
                                 <TableCell className="text-center py-4 px-4">
                                     <Badge variant="outline" className="font-normal">
                                         {crew.role}

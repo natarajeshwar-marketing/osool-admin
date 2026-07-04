@@ -1,11 +1,11 @@
-export interface Zone {
+export interface Building {
     id: string
     name: string
     type: "Residential" | "Commercial" | "Industrial"
     status: "Active" | "Inactive"
 }
 
-export const mockZones: Zone[] = [
+export const mockBuildings: Building[] = [
     { id: "ZN-001", name: "Riyadh", type: "Commercial", status: "Active" },
     { id: "ZN-002", name: "Dammam", type: "Residential", status: "Active" },
     { id: "ZN-003", name: "Jeddah", type: "Industrial", status: "Active" },
@@ -20,7 +20,7 @@ export interface Crew {
     id: string
     name: string
     joiningDate: string
-    zone: string
+    building: string
     role: CrewRole
     status: CrewStatus
     efficiency: number
@@ -31,7 +31,7 @@ export const mockCrews: Crew[] = [
         id: "CR-001",
         name: "Alpha Squad",
         joiningDate: "Jan 15, 2024",
-        zone: "Riyadh",
+        building: "Riyadh",
         role: "Technician",
         status: "Active",
         efficiency: 92
@@ -40,7 +40,7 @@ export const mockCrews: Crew[] = [
         id: "CR-002",
         name: "Beta Team",
         joiningDate: "Feb 01, 2024",
-        zone: "Dammam",
+        building: "Dammam",
         role: "Cleaner",
         status: "Active",
         efficiency: 88
@@ -49,7 +49,7 @@ export const mockCrews: Crew[] = [
         id: "CR-003",
         name: "Gamma Force",
         joiningDate: "Mar 10, 2024",
-        zone: "Al Ula",
+        building: "Al Ula",
         role: "Technician",
         status: "Maintenance",
         efficiency: 20
@@ -58,7 +58,7 @@ export const mockCrews: Crew[] = [
         id: "CR-004",
         name: "Delta Unit",
         joiningDate: "Apr 05, 2024",
-        zone: "Riyadh", // Changed to match a mock zone for testing
+        building: "Riyadh", // Changed to match a mock building for testing
         role: "Cleaner",
         status: "On Leave",
         efficiency: 10
@@ -67,7 +67,7 @@ export const mockCrews: Crew[] = [
         id: "CR-005",
         name: "Epsilon Crew",
         joiningDate: "May 20, 2024",
-        zone: "Dammam",
+        building: "Dammam",
         role: "Technician",
         status: "Active",
         efficiency: 76
@@ -76,7 +76,7 @@ export const mockCrews: Crew[] = [
         id: "CR-006",
         name: "Zeta Group",
         joiningDate: "Jun 12, 2024",
-        zone: "Jeddah",
+        building: "Jeddah",
         role: "Cleaner",
         status: "Inactive",
         efficiency: 50

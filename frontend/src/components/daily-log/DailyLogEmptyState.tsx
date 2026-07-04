@@ -8,7 +8,7 @@ export function DailyLogEmptyState() {
             </div>
             <h3 className="text-lg font-semibold text-foreground">Ready to Log</h3>
             <p className="text-muted-foreground max-w-sm mt-1">
-                Please select a <span className="font-medium text-foreground">Zone</span> from the controls above to view assigned active crews and begin entering data.
+                Please select a <span className="font-medium text-foreground">Building</span> from the controls above to view assigned active crews and begin entering data.
             </p>
         </div>
     )

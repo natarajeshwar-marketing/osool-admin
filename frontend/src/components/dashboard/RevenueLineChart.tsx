@@ -84,7 +84,7 @@ export function RevenueLineChart() {
                             label += ': ';
                         }
                         if (context.parsed.y !== null) {
-                            label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed.y);
+                            label += 'SAR ' + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(context.parsed.y);
                         }
                         return label;
                     }
@@ -112,9 +112,9 @@ export function RevenueLineChart() {
                     color: '#888888',
                     callback: function (value: any) {
                         if (value >= 1000) {
-                            return '$' + value / 1000 + 'k';
+                            return 'SAR ' + value / 1000 + 'k';
                         }
-                        return '$' + value;
+                        return 'SAR ' + value;
                     }
                 },
                 border: {

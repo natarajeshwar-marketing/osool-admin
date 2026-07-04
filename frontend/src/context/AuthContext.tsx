@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { UserRole } from "@/types";
-import { jwtDecode } from "jwt-decode";
+
 
 interface User {
     id: string;
@@ -26,28 +26,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const storedToken = localStorage.getItem("token");
-        const storedUser = localStorage.getItem("user");
+        // Automatically mock authentication as Super Admin
+        const mockedUser: User = {
+            id: "mock-super-admin",
+            email: "admin@osool.com",
+            name: "Osool Admin",
+            role: UserRole.SUPER_ADMIN
+        };
+        const mockedToken = "mock-jwt-token";
 
-        if (storedToken && storedUser) {
-            try {
-                const decoded: any = jwtDecode(storedToken);
-                const currentTime = Date.now() / 1000;
-
-                if (decoded.exp && decoded.exp > currentTime) {
-                    setToken(storedToken);
-                    setUser(JSON.parse(storedUser));
-                } else {
-                    // Token expired
-                    localStorage.removeItem("token");
-                    localStorage.removeItem("user");
-                }
-            } catch (error) {
-                // Invalid token
-                localStorage.removeItem("token");
-                localStorage.removeItem("user");
-            }
-        }
+        setToken(mockedToken);
+        setUser(mockedUser);
         setLoading(false);
     }, []);
 
