@@ -23,7 +23,7 @@ export class CrewsController {
   constructor(private readonly crewsService: CrewsService) {}
 
   @Post()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR)
   create(@Body() createCrewDto: CreateCrewDto) {
     return this.crewsService.create(createCrewDto);
   }
@@ -39,13 +39,13 @@ export class CrewsController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR)
   update(@Param('id') id: string, @Body() updateCrewDto: UpdateCrewDto) {
     return this.crewsService.update(id, updateCrewDto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR)
   remove(@Param('id') id: string) {
     return this.crewsService.remove(id);
   }
