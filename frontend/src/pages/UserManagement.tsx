@@ -1,7 +1,8 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { type User } from "@/types";
+import { type User, UserRole } from "@/types";
+import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
@@ -9,12 +10,10 @@ import { Trash2, UserPlus, Edit } from "lucide-react";
 import { UserFormDialog } from "@/components/users/UserFormDialog";
 import { DeleteConfirmDialog } from "@/components/users/DeleteConfirmDialog";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
-
 export default function UserManagement() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
-    const { token } = useAuth();
+    const { user } = useAuth();
 
     // Dialog States
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -28,14 +27,12 @@ export default function UserManagement() {
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        if (token) fetchUsers();
-    }, [token]);
+        fetchUsers();
+    }, []);
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch(`${API_URL}/users`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
+            const res = await apiClient("/users");
             if (!res.ok) throw new Error("Failed to fetch users");
             const data = await res.json();
             setUsers(data);
@@ -59,9 +56,9 @@ export default function UserManagement() {
     const handleFormSubmit = async (_: React.FormEvent, data: any) => {
         setSubmitting(true);
         try {
-            const url = userToEdit
-                ? `${API_URL}/users/${userToEdit.id}`
-                : `${API_URL}/users`;
+            const path = userToEdit
+                ? `/users/${userToEdit.id}`
+                : "/users";
 
             const method = userToEdit ? "PATCH" : "POST";
 
@@ -78,12 +75,8 @@ export default function UserManagement() {
                 payload.password = data.password;
             }
 
-            const res = await fetch(url, {
+            const res = await apiClient(path, {
                 method,
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
                 body: JSON.stringify(payload),
             });
 
@@ -107,9 +100,8 @@ export default function UserManagement() {
     const handleDeleteUser = async () => {
         if (!userToDelete) return;
         try {
-            const res = await fetch(`${API_URL}/users/${userToDelete}`, {
+            const res = await apiClient(`/users/${userToDelete}`, {
                 method: "DELETE",
-                headers: { "Authorization": `Bearer ${token}` }
             });
             if (!res.ok) throw new Error("Failed to delete user");
             toast.success("User deleted");
@@ -130,10 +122,12 @@ export default function UserManagement() {
                     <p className="text-muted-foreground">Manage user access and roles.</p>
                 </div>
 
-                <Button onClick={handleOpenCreate}>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Add User
-                </Button>
+                {user?.role === UserRole.SUPER_ADMIN && (
+                    <Button onClick={handleOpenCreate}>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Add User
+                    </Button>
+                )}
             </div>
 
             <UserFormDialog
@@ -159,13 +153,13 @@ export default function UserManagement() {
                             <TableHead>Email</TableHead>
                             <TableHead>Role</TableHead>
                             <TableHead>Created At</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
+                            {user?.role === UserRole.SUPER_ADMIN && <TableHead className="text-right">Actions</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8">Loading users...</TableCell>
+                                <TableCell colSpan={user?.role === UserRole.SUPER_ADMIN ? 5 : 4} className="text-center py-8">Loading users...</TableCell>
                             </TableRow>
                         ) : users.map((u) => (
                             <TableRow key={u.id}>
@@ -173,16 +167,18 @@ export default function UserManagement() {
                                 <TableCell>{u.email}</TableCell>
                                 <TableCell>{u.role}</TableCell>
                                 <TableCell>{new Date(u.createdAt).toLocaleDateString()}</TableCell>
-                                <TableCell className="text-right">
-                                    <div className="flex justify-end gap-2">
-                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(u)}>
-                                            <Edit className="h-4 w-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => confirmDelete(u.id)}>
-                                            <Trash2 className="h-4 w-4 text-red-500" />
-                                        </Button>
-                                    </div>
-                                </TableCell>
+                                {user?.role === UserRole.SUPER_ADMIN && (
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(u)}>
+                                                <Edit className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" onClick={() => confirmDelete(u.id)}>
+                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                )}
                             </TableRow>
                         ))}
                     </TableBody>

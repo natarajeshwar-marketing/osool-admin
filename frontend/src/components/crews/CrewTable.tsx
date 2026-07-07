@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { MoreHorizontal } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import type { Crew, CrewStatus } from "@/types"
+import { apiClient } from "@/lib/api"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -48,7 +49,7 @@ export function CrewTable({ crews, onDataChange }: CrewTableProps) {
 
     const handleDelete = async (id: string) => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/crews/${id}`, {
+            const response = await apiClient(`/crews/${id}`, {
                 method: 'DELETE',
             })
 
@@ -81,24 +82,20 @@ export function CrewTable({ crews, onDataChange }: CrewTableProps) {
                 <Table>
                     <TableHeader className="sticky top-0 z-10 bg-background">
                         <TableRow>
-                            <TableHead className="w-[100px] py-4 px-4 bg-muted/50">ID</TableHead>
                             <TableHead className="py-4 px-4 bg-muted/50">CREW NAME</TableHead>
                             <TableHead className="py-4 px-4 bg-muted/50">JOINING DATE</TableHead>
-                            <TableHead className="py-4 px-4 bg-muted/50">CURRENT BUILDING</TableHead>
                             <TableHead className="text-center py-4 px-4 bg-muted/50">ROLE</TableHead>
                             <TableHead className="text-center py-4 px-4 bg-muted/50">SCHEDULED HOURS</TableHead>
                             <TableHead className="py-4 px-4 bg-muted/50">STATUS</TableHead>
-                            <TableHead className="text-right py-4 px-4 bg-muted/50">EFFICIENCY</TableHead>
+                            <TableHead className="text-right py-4 px-4 bg-muted/50">REVENUE</TableHead>
                             <TableHead className="w-[50px] py-4 px-4 bg-muted/50"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {crews.map((crew) => (
                             <TableRow key={crew.id} className="hover:bg-muted/5">
-                                <TableCell className="font-medium text-muted-foreground py-4 px-4">{crew.id}</TableCell>
                                 <TableCell className="font-semibold py-4 px-4">{crew.firstName} {crew.lastName}</TableCell>
                                 <TableCell className="py-4 px-4 text-muted-foreground">{formatDate(crew.dateOfJoining)}</TableCell>
-                                <TableCell className="py-4 px-4">{crew.building?.name || 'N/A'}</TableCell>
                                 <TableCell className="text-center py-4 px-4">
                                     <Badge variant="outline" className="font-normal">
                                         {crew.role}
@@ -112,13 +109,13 @@ export function CrewTable({ crews, onDataChange }: CrewTableProps) {
                                         {crew.status}
                                     </Badge>
                                 </TableCell>
-                                <TableCell className="text-right py-4 px-4">
-                                    {crew.efficiency > 0 ? (
-                                        <span className={crew.efficiency >= 90 ? "text-green-600 font-bold" : "text-neutral-600"}>
-                                            {crew.efficiency}%
+                                <TableCell className="text-right py-4 px-4 font-semibold text-green-600">
+                                    {crew.revenue > 0 ? (
+                                        <span>
+                                            SAR {Number(crew.revenue).toLocaleString()}
                                         </span>
                                     ) : (
-                                        <span className="text-muted-foreground">-</span>
+                                        <span className="text-muted-foreground">SAR 0</span>
                                     )}
                                 </TableCell>
                                 <TableCell className="py-4 px-4">

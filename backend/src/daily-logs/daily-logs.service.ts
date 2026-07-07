@@ -1,343 +1,364 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
-import { DailyLog } from '../entities/daily-log.entity';
+import { Repository } from 'typeorm';
 import { Crew } from '../entities/crew.entity';
-import { Zone } from '../entities/zone.entity';
+import { Building } from '../entities/building.entity';
+import { Schedule } from '../entities/schedule.entity';
 
 @Injectable()
 export class DailyLogsService implements OnModuleInit {
-    private readonly logger = new Logger(DailyLogsService.name);
+  private readonly logger = new Logger(DailyLogsService.name);
 
-    constructor(
-        @InjectRepository(DailyLog)
-        private dailyLogsRepository: Repository<DailyLog>,
-        @InjectRepository(Crew)
-        private crewRepository: Repository<Crew>,
-        @InjectRepository(Zone)
-        private zoneRepository: Repository<Zone>,
-    ) { }
+  constructor(
+    @InjectRepository(Crew)
+    private crewRepository: Repository<Crew>,
+    @InjectRepository(Building)
+    private buildingRepository: Repository<Building>,
+    @InjectRepository(Schedule)
+    private scheduleRepository: Repository<Schedule>,
+  ) {}
 
-    async onModuleInit() {
-        await this.backfillSnapshots();
+  async onModuleInit() {
+    this.logger.log(
+      'DailyLogsService (exclusively schedules-based dashboard) initialized.',
+    );
+  }
+
+  // Helper to parse 'HH:MM' time string to decimal hours
+  private parseTimeToHours(timeStr: string): number {
+    if (!timeStr || typeof timeStr !== 'string') return 0;
+    const parts = timeStr.split(':').map(Number);
+    if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) return 0;
+    return parts[0] + parts[1] / 60;
+  }
+
+  async getDashboardStats(startDate?: string, endDate?: string) {
+    // 1. Total Crews (Current Db State)
+    const totalCrew = await this.crewRepository.count();
+
+    // 2. Total Buildings (Current Db State)
+    const buildings = await this.buildingRepository.find();
+    const totalBuildings = buildings.length;
+
+    // Date range parsing
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+
+    // Default to 1 day if start/end are not defined
+    let diffDays = 1;
+    if (start && end) {
+      const oneDay = 24 * 60 * 60 * 1000;
+      diffDays = Math.max(
+        1,
+        Math.round(Math.abs((end.getTime() - start.getTime()) / oneDay)) + 1,
+      );
     }
 
-    async getDashboardStats(startDate?: string, endDate?: string) {
-        // 1. Total Crews (Current Db State)
-        const totalCrew = await this.crewRepository.count();
+    // 3. Aggregate Revenues using SQL
+    const revenueQuery = this.scheduleRepository
+      .createQueryBuilder('schedule')
+      .select('SUM(schedule.totalCost)', 'totalRevenue')
+      .addSelect(
+        "SUM(CASE WHEN LOWER(schedule.serviceCategory) = 'cleaning' THEN schedule.totalCost ELSE 0 END)",
+        'cleaningRevenue',
+      )
+      .addSelect(
+        "SUM(CASE WHEN LOWER(schedule.serviceCategory) = 'maintenance' THEN schedule.totalCost ELSE 0 END)",
+        'maintenanceRevenue',
+      )
+      .addSelect(
+        "SUM(CASE WHEN LOWER(schedule.serviceCategory) = 'pest control' THEN schedule.totalCost ELSE 0 END)",
+        'pestControlRevenue',
+      )
+      .addSelect(
+        "SUM(CASE WHEN LOWER(schedule.serviceCategory) = 'car wash' THEN schedule.totalCost ELSE 0 END)",
+        'carWashRevenue',
+      );
 
-        // Helper to get working days (if needed for theoretical capacity, but with snapshots we imply logged capacity)
-        // Leaving it for partial logic if we mix strategies, but ideally we rely on snapshots.
+    if (start && end) {
+      revenueQuery.where(
+        'make_date(schedule.year, schedule.month, schedule.date) BETWEEN :startDate AND :endDate',
+        { startDate: start, endDate: end },
+      );
+    } else if (start) {
+      revenueQuery.where(
+        'make_date(schedule.year, schedule.month, schedule.date) >= :startDate',
+        { startDate: start },
+      );
+    } else if (end) {
+      revenueQuery.where(
+        'make_date(schedule.year, schedule.month, schedule.date) <= :endDate',
+        { endDate: end },
+      );
+    }
 
-        // 2 & 5. Aggregated Stats from Daily Logs (using snapshots)
-        const statsQuery = this.dailyLogsRepository.createQueryBuilder('daily_log')
-            .select('daily_log.snapshotZoneId', 'zoneId')
-            .addSelect('COUNT(DISTINCT daily_log.crewId)', 'activeCrews')
-            .addSelect('SUM(daily_log.hoursWorked)', 'totalWorked')
-            .addSelect('SUM(daily_log.totalRevenue)', 'totalRevenue')
-            .addSelect('SUM(daily_log.snapshotScheduledHours)', 'totalScheduled')
+    const revStats = await revenueQuery.getRawOne();
+    const totalRevenue = parseFloat(revStats?.totalRevenue) || 0;
+    const cleaningRevenue = parseFloat(revStats?.cleaningRevenue) || 0;
+    const maintenanceRevenue = parseFloat(revStats?.maintenanceRevenue) || 0;
+    const pestControlRevenue = parseFloat(revStats?.pestControlRevenue) || 0;
+    const carWashRevenue = parseFloat(revStats?.carWashRevenue) || 0;
 
-            // Role specific worked hours
-            .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Technician\' THEN daily_log.hoursWorked ELSE 0 END)', 'techWorked')
-            .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Cleaner\' THEN daily_log.hoursWorked ELSE 0 END)', 'cleanerWorked')
+    // 4. Calculate Active Crews (Distinct crews assigned to schedules) using SQL
+    const activeCrewsQuery = this.scheduleRepository
+      .createQueryBuilder('schedule')
+      .innerJoin('schedule.crews', 'crew')
+      .select('COUNT(DISTINCT crew.id)', 'count');
 
-            // Role specific revenue
-            .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Cleaner\' THEN daily_log.totalRevenue ELSE 0 END)', 'cleaningRevenue')
-            .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Technician\' THEN daily_log.totalRevenue ELSE 0 END)', 'maintenanceRevenue')
-            .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Car Washer\' THEN daily_log.totalRevenue ELSE 0 END)', 'carWashRevenue')
-            .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Pest Control\' THEN daily_log.totalRevenue ELSE 0 END)', 'pestControlRevenue')
+    if (start && end) {
+      activeCrewsQuery.where(
+        'make_date(schedule.year, schedule.month, schedule.date) BETWEEN :startDate AND :endDate',
+        { startDate: start, endDate: end },
+      );
+    } else if (start) {
+      activeCrewsQuery.where(
+        'make_date(schedule.year, schedule.month, schedule.date) >= :startDate',
+        { startDate: start },
+      );
+    } else if (end) {
+      activeCrewsQuery.where(
+        'make_date(schedule.year, schedule.month, schedule.date) <= :endDate',
+        { endDate: end },
+      );
+    }
 
-            // Role specific scheduled hours (Capacity)
-            .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Technician\' THEN daily_log.snapshotScheduledHours ELSE 0 END)', 'techScheduled')
-            .addSelect('SUM(CASE WHEN daily_log.snapshotRole = \'Cleaner\' THEN daily_log.snapshotScheduledHours ELSE 0 END)', 'cleanerScheduled')
+    const activeCrewsResult = await activeCrewsQuery.getRawOne();
+    const activeCrews = parseInt(activeCrewsResult?.count) || 0;
 
-            // Role counts (Active unique heads per role is harder in one pass, using simplistic sum of logs might be wrong for "Headcount")
-            // For "Crew Count" in Zone Allocation, we usually want "Distinct Heads".
-            // Let's rely on activeCrews count for headcounts, but splitting by role is complex in single groupby zone.
-            // Simplified: "Active Crews" is enough for the card.
+    // 5. Calculate Total Worked Hours
+    const scheduleTimeQuery = this.scheduleRepository
+      .createQueryBuilder('schedule')
+      .leftJoin('schedule.crews', 'crew')
+      .select('schedule.startTime', 'startTime')
+      .addSelect('schedule.endTime', 'endTime')
+      .addSelect('COUNT(crew.id)', 'crewCount');
 
-            .groupBy('daily_log.snapshotZoneId');
+    if (start && end) {
+      scheduleTimeQuery.where(
+        'make_date(schedule.year, schedule.month, schedule.date) BETWEEN :startDate AND :endDate',
+        { startDate: start, endDate: end },
+      );
+    } else if (start) {
+      scheduleTimeQuery.where(
+        'make_date(schedule.year, schedule.month, schedule.date) >= :startDate',
+        { startDate: start },
+      );
+    } else if (end) {
+      scheduleTimeQuery.where(
+        'make_date(schedule.year, schedule.month, schedule.date) <= :endDate',
+        { endDate: end },
+      );
+    }
 
-        if (startDate && endDate) {
-            statsQuery.where('daily_log.date BETWEEN :startDate AND :endDate', { startDate, endDate });
-        } else if (startDate) {
-            statsQuery.where('daily_log.date >= :startDate', { startDate });
-        }
+    const scheduleTimes = await scheduleTimeQuery
+      .groupBy('schedule.id')
+      .addGroupBy('schedule.startTime')
+      .addGroupBy('schedule.endTime')
+      .getRawMany();
 
-        const statsResults = await statsQuery.getRawMany();
+    let totalWorkedHours = 0;
+    scheduleTimes.forEach((s) => {
+      let duration =
+        this.parseTimeToHours(s.endTime) - this.parseTimeToHours(s.startTime);
+      if (duration < 0) duration += 24; // overnight schedule
+      const crewCount = parseInt(s.crewCount) || 0;
+      if (duration > 0 && crewCount > 0) {
+        totalWorkedHours += duration * crewCount;
+      }
+    });
 
-        // Global Totals from aggregation
-        let activeCrews = 0;
-        let totalRevenue = 0;
-        let cleaningRevenue = 0;
-        let maintenanceRevenue = 0;
-        let carWashRevenue = 0;
-        let pestControlRevenue = 0;
-        let globalWorked = 0;
-        let globalScheduled = 0;
+    const capacityResult = await this.crewRepository
+      .createQueryBuilder('crew')
+      .select('SUM(crew.scheduledHours)', 'sum')
+      .getRawOne();
+    const dailyCapacity = parseFloat(capacityResult?.sum) || 0;
+    const totalScheduledCapacity = dailyCapacity * diffDays;
 
-        const zoneStatsMap = new Map();
+    const utilizationRate =
+      totalScheduledCapacity > 0
+        ? Math.min(
+            100,
+            Math.round((totalWorkedHours / totalScheduledCapacity) * 100),
+          )
+        : 0;
 
-        statsResults.forEach(row => {
-            const zoneId = row.zoneId || 'unknown';
-            const logRevenue = parseFloat(row.totalRevenue) || 0;
-            const logWorked = parseFloat(row.totalWorked) || 0;
-            const logScheduled = parseFloat(row.totalScheduled) || 0;
-            const logActive = parseInt(row.activeCrews) || 0;
+    // 6. Calculate Building Allocations using a flat SQL query mapped in O(N)
+    const assignmentsQuery = this.scheduleRepository
+      .createQueryBuilder('schedule')
+      .innerJoin('schedule.crews', 'crew')
+      .select('schedule.buildingId', 'buildingId')
+      .addSelect('schedule.startTime', 'startTime')
+      .addSelect('schedule.endTime', 'endTime')
+      .addSelect('crew.id', 'crewId')
+      .addSelect('crew.role', 'crewRole')
+      .addSelect('crew.scheduledHours', 'crewScheduledHours');
 
-            totalRevenue += logRevenue;
-            cleaningRevenue += parseFloat(row.cleaningRevenue) || 0;
-            maintenanceRevenue += parseFloat(row.maintenanceRevenue) || 0;
-            carWashRevenue += parseFloat(row.carWashRevenue) || 0;
-            pestControlRevenue += parseFloat(row.pestControlRevenue) || 0;
-            globalWorked += logWorked;
-            globalScheduled += logScheduled;
-            // activeCrews sum from groups might overlap if crew moved zones? 
-            // Querying global distinct active crews directly is safer for the top-level metric.
+    if (start && end) {
+      assignmentsQuery.where(
+        'make_date(schedule.year, schedule.month, schedule.date) BETWEEN :startDate AND :endDate',
+        { startDate: start, endDate: end },
+      );
+    } else if (start) {
+      assignmentsQuery.where(
+        'make_date(schedule.year, schedule.month, schedule.date) >= :startDate',
+        { startDate: start },
+      );
+    } else if (end) {
+      assignmentsQuery.where(
+        'make_date(schedule.year, schedule.month, schedule.date) <= :endDate',
+        { endDate: end },
+      );
+    }
 
-            zoneStatsMap.set(zoneId, {
-                activeCrewCount: logActive, // Heads active in this zone
-                workedHours: logWorked,
-                totalCapacity: logScheduled,
-                revenue: logRevenue,
-                techWorked: parseFloat(row.techWorked) || 0,
-                cleanerWorked: parseFloat(row.cleanerWorked) || 0,
-                techScheduled: parseFloat(row.techScheduled) || 0,
-                cleanerScheduled: parseFloat(row.cleanerScheduled) || 0
-            });
+    const assignments = await assignmentsQuery.getRawMany();
+
+    const buildingStatsMap = new Map<
+      string,
+      {
+        activeCrewIds: Set<string>;
+        workedHours: number;
+        techWorked: number;
+        cleanerWorked: number;
+        activeCrewScheduledHoursMap: Map<
+          string,
+          { role: string; scheduledHours: number }
+        >;
+      }
+    >();
+
+    assignments.forEach((asg) => {
+      const bId = asg.buildingId || 'unknown';
+      if (!buildingStatsMap.has(bId)) {
+        buildingStatsMap.set(bId, {
+          activeCrewIds: new Set(),
+          workedHours: 0,
+          techWorked: 0,
+          cleanerWorked: 0,
+          activeCrewScheduledHoursMap: new Map(),
         });
+      }
 
-        // Re-query global active crews to avoid duplicates if a crew worked in multiple zones
-        const globalActiveQuery = this.dailyLogsRepository.createQueryBuilder('daily_log')
-            .select('COUNT(DISTINCT daily_log.crewId)', 'count');
+      const stats = buildingStatsMap.get(bId)!;
+      stats.activeCrewIds.add(asg.crewId);
 
-        if (startDate && endDate) {
-            globalActiveQuery.where('daily_log.date BETWEEN :startDate AND :endDate', { startDate, endDate });
-        } else if (startDate) {
-            globalActiveQuery.where('daily_log.date >= :startDate', { startDate });
-        }
-        const globalActiveRes = await globalActiveQuery.getRawOne();
-        activeCrews = parseInt(globalActiveRes.count, 10) || 0;
+      let duration =
+        this.parseTimeToHours(asg.endTime) -
+        this.parseTimeToHours(asg.startTime);
+      if (duration < 0) duration += 24; // overnight schedule
 
-        // Utilization
-        const utilizationRate = globalScheduled > 0
-            ? Math.round((globalWorked / globalScheduled) * 100)
-            : 0;
+      stats.workedHours += duration;
+      if (asg.crewRole === 'Technician') {
+        stats.techWorked += duration;
+      } else if (asg.crewRole === 'Cleaner') {
+        stats.cleanerWorked += duration;
+      }
 
-        // 4. Total Zones
-        const zones = await this.zoneRepository.find();
-        const totalZones = zones.length;
-
-        // 5. Zone Allocation
-        const zoneAllocation = zones.map(zone => {
-            const stats = zoneStatsMap.get(zone.id) || {
-                activeCrewCount: 0,
-                workedHours: 0,
-                totalCapacity: 0,
-                revenue: 0,
-                techWorked: 0,
-                cleanerWorked: 0,
-                techScheduled: 0,
-                cleanerScheduled: 0
-            };
-
-            const utilization = stats.totalCapacity > 0
-                ? Math.round((stats.workedHours / stats.totalCapacity) * 100)
-                : 0;
-
-            const technicianUtilization = stats.techScheduled > 0
-                ? Math.round((stats.techWorked / stats.techScheduled) * 100)
-                : 0;
-
-            const cleanerUtilization = stats.cleanerScheduled > 0
-                ? Math.round((stats.cleanerWorked / stats.cleanerScheduled) * 100)
-                : 0;
-
-            return {
-                zoneName: zone.name,
-                zoneId: zone.id,
-                activeCrewCount: stats.activeCrewCount,
-                // Note: The UI might expect "crewCount", "technicianCount", "cleanerCount" (Current Headcount)
-                // vs "activeCrewCount" (Historical). 
-                // The previous code returned "crewCount" (Current). 
-                // "activeCrewCount" was added later.
-                // Keeping "crewCount" as 0 or undefined might break UI?
-                // Let's provide 'activeCrewCount' as the main stat.
-                // If the UI relies on 'technicianCount' (static), we might want to still fetch it?
-                // But the user complained about "shifted data".
-                // Let's use the historical "active" counts for the report.
-                crewCount: stats.activeCrewCount, // Using active as the count
-                workedHours: stats.workedHours,
-                totalCapacity: stats.totalCapacity,
-                utilizationRate: utilization,
-                technicianUtilization,
-                cleanerUtilization
-            };
+      if (!stats.activeCrewScheduledHoursMap.has(asg.crewId)) {
+        stats.activeCrewScheduledHoursMap.set(asg.crewId, {
+          role: asg.crewRole,
+          scheduledHours: parseFloat(asg.crewScheduledHours) || 0,
         });
+      }
+    });
 
-        return {
-            totalCrew,
-            activeCrews,
-            utilizationRate,
-            totalRevenue,
-            cleaningRevenue,
-            maintenanceRevenue,
-            carWashRevenue,
-            pestControlRevenue,
-            totalZones,
-            zoneAllocation
-        };
-    }
+    const buildingAllocation = buildings.map((building) => {
+      const stats = buildingStatsMap.get(building.id) || {
+        activeCrewIds: new Set<string>(),
+        workedHours: 0,
+        techWorked: 0,
+        cleanerWorked: 0,
+        activeCrewScheduledHoursMap: new Map<
+          string,
+          { role: string; scheduledHours: number }
+        >(),
+      };
 
-    async create(createDailyLogDto: any) {
-        const logsToProcess = Array.isArray(createDailyLogDto) ? createDailyLogDto : [createDailyLogDto];
-        const results: DailyLog[] = [];
+      let bTotalCapacity = 0;
+      let bTechCapacity = 0;
+      let bCleanerCapacity = 0;
 
-        for (const logDto of logsToProcess) {
-            // Fetch crew details for snapshot
-            const crew = await this.crewRepository.findOne({ where: { id: logDto.crewId }, relations: ['zone'] });
-
-            const snapshotData = crew ? {
-                snapshotZoneId: crew.zone?.id,
-                snapshotRole: crew.role,
-                snapshotStatus: crew.status,
-                snapshotScheduledHours: crew.scheduledHours
-            } : {};
-
-            const existingLog = await this.dailyLogsRepository.findOne({
-                where: {
-                    date: logDto.date,
-                    crewId: logDto.crewId
-                }
-            });
-
-            if (existingLog) {
-                // Update existing
-                // Note: We might NOT want to update snapshots on edit if the day has passed, 
-                // but for simple corrections on the same day, updating snapshots to current crew state is acceptable 
-                // OR we preserve original snapshots. 
-                // Requirement says "previous all entries log should not be changed... only new log should reflect this changes".
-                // So edits to OLD logs should probably preserve snapshots?
-                // But typically edits are corrections. 
-                // Let's assume creates get snapshots. Updates to specific log fields (hours/revenue) shouldn't change snapshots unless explicitly intended.
-                // However, if the log is being "created/updated" via a bulk upload or form that implies "current state", we might want to refresh.
-                // Given the requirement "previous all entries... should not be changed", we should probably ONLY set snapshots on creation or if they are missing.
-
-                const updatedData = { ...logDto };
-                // If it's an update, we preserve existing snapshots unless they are null (backfill scenario handled elsewhere)
-                // If we want to force update snapshots, we'd add them here.
-                // For now, let's ONLY add snapshots if they are missing in the existing log (which they initially are) 
-                // OR if this is considered a "new" entry logic.
-                // Comparing with requirement: "only new log should reflect this changes". 
-                // So executed updates to old logs should NOT touch snapshots.
-
-                if (!existingLog.snapshotZoneId && crew) {
-                    Object.assign(updatedData, snapshotData);
-                }
-
-                const updated = this.dailyLogsRepository.merge(existingLog, updatedData);
-                results.push(await this.dailyLogsRepository.save(updated));
-            } else {
-                // Create new - Apply snapshots
-                const newLog = this.dailyLogsRepository.create({
-                    ...logDto,
-                    ...snapshotData
-                });
-                const saved = await this.dailyLogsRepository.save(newLog);
-                results.push(Array.isArray(saved) ? saved[0] : saved);
-            }
+      stats.activeCrewScheduledHoursMap.forEach((crewInfo) => {
+        const capacity = crewInfo.scheduledHours * diffDays;
+        bTotalCapacity += capacity;
+        if (crewInfo.role === 'Technician') {
+          bTechCapacity += capacity;
+        } else if (crewInfo.role === 'Cleaner') {
+          bCleanerCapacity += capacity;
         }
-        return results;
-    }
+      });
 
-    async findAll(date?: string, zoneId?: string, startDate?: string, endDate?: string, role?: string, page: number = 1, limit: number = 10): Promise<{ data: DailyLog[], total: number }> {
-        const query = this.dailyLogsRepository.createQueryBuilder('daily_log')
-            .leftJoinAndSelect('daily_log.crew', 'crew')
-            // Join zone based on snapshotZoneId to get historical zone details
-            .leftJoinAndMapOne('daily_log.snapshotZone', Zone, 'snapshotZone', 'snapshotZone.id = daily_log.snapshot_zone_id::uuid')
-            .orderBy('daily_log.date', 'DESC');
+      const utilization =
+        bTotalCapacity > 0
+          ? Math.min(
+              100,
+              Math.round((stats.workedHours / bTotalCapacity) * 100),
+            )
+          : 0;
 
-        if (date) {
-            query.andWhere('daily_log.date = :date', { date });
-        }
+      const technicianUtilization =
+        bTechCapacity > 0
+          ? Math.min(100, Math.round((stats.techWorked / bTechCapacity) * 100))
+          : 0;
 
-        if (startDate && endDate) {
-            query.andWhere('daily_log.date BETWEEN :startDate AND :endDate', { startDate, endDate });
-        } else if (startDate) {
-            query.andWhere('daily_log.date >= :startDate', { startDate });
-        }
+      const cleanerUtilization =
+        bCleanerCapacity > 0
+          ? Math.min(
+              100,
+              Math.round((stats.cleanerWorked / bCleanerCapacity) * 100),
+            )
+          : 0;
 
-        if (zoneId && zoneId !== 'all') {
-            query.andWhere('daily_log.snapshotZoneId = :zoneId', { zoneId });
-        }
+      return {
+        buildingName: building.name,
+        buildingId: building.id,
+        activeCrewCount: stats.activeCrewIds.size,
+        crewCount: stats.activeCrewIds.size,
+        workedHours: parseFloat(stats.workedHours.toFixed(2)),
+        totalCapacity: parseFloat(bTotalCapacity.toFixed(2)),
+        utilizationRate: utilization,
+        technicianUtilization,
+        cleanerUtilization,
+      };
+    });
 
-        if (role && role !== 'all') {
-            query.andWhere('daily_log.snapshotRole = :role', { role });
-        }
+    return {
+      totalCrew,
+      activeCrews,
+      utilizationRate,
+      totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+      cleaningRevenue: parseFloat(cleaningRevenue.toFixed(2)),
+      maintenanceRevenue: parseFloat(maintenanceRevenue.toFixed(2)),
+      carWashRevenue: parseFloat(carWashRevenue.toFixed(2)),
+      pestControlRevenue: parseFloat(pestControlRevenue.toFixed(2)),
+      totalBuildings,
+      buildingAllocation,
+    };
+  }
 
-        const [data, total] = await query
-            .skip((page - 1) * limit)
-            .take(limit)
-            .getManyAndCount();
+  async getMonthlyRevenue(year: number) {
+    const query = this.scheduleRepository
+      .createQueryBuilder('schedule')
+      .select('schedule.month', 'month')
+      .addSelect('SUM(schedule.totalCost)', 'totalRevenue')
+      .where('schedule.year = :year', { year })
+      .groupBy('schedule.month')
+      .orderBy('schedule.month', 'ASC');
 
-        return { data, total };
-    }
+    const results = await query.getRawMany();
 
-    async getMonthlyRevenue(year: number) {
-        const query = this.dailyLogsRepository.createQueryBuilder('daily_log')
-            .select('EXTRACT(MONTH FROM daily_log.date)', 'month')
-            .addSelect('SUM(daily_log.totalRevenue)', 'totalRevenue')
-            .where('EXTRACT(YEAR FROM daily_log.date) = :year', { year })
-            .groupBy('month')
-            .orderBy('month', 'ASC');
+    // Initialize array for 12 months with 0 revenue
+    const monthlyRevenue = Array(12).fill(0);
 
-        const results = await query.getRawMany();
+    results.forEach((result) => {
+      const monthIndex = parseInt(result.month) - 1; // schedule.month is 1-12
+      if (monthIndex >= 0 && monthIndex < 12) {
+        monthlyRevenue[monthIndex] = parseFloat(result.totalRevenue) || 0;
+      }
+    });
 
-        // Initialize array for 12 months with 0 revenue
-        const monthlyRevenue = Array(12).fill(0);
-
-        results.forEach(result => {
-            const monthIndex = parseInt(result.month) - 1; // EXTRACT(MONTH) returns 1-12
-            if (monthIndex >= 0 && monthIndex < 12) {
-                monthlyRevenue[monthIndex] = parseFloat(result.totalRevenue) || 0;
-            }
-        });
-
-        return {
-            year,
-            monthlyRevenue
-        };
-    }
-
-    // Temporary backfill method
-    // Automatic backfill method
-    async backfillSnapshots() {
-        // Find logs with missing snapshots
-        const count = await this.dailyLogsRepository.count({ where: { snapshotZoneId: IsNull() } });
-
-        if (count === 0) {
-            this.logger.log('All daily logs have snapshot data. release check complete.');
-            return;
-        }
-
-        this.logger.log(`[BACKFILL] Found ${count} logs missing snapshot data. Starting auto-migration...`);
-
-        const logs = await this.dailyLogsRepository.find({ where: { snapshotZoneId: IsNull() } });
-
-        let updatedCount = 0;
-        for (const log of logs) {
-            const crew = await this.crewRepository.findOne({ where: { id: log.crewId }, relations: ['zone'] });
-            if (crew) {
-                log.snapshotZoneId = crew.zone?.id;
-                log.snapshotRole = crew.role;
-                log.snapshotStatus = crew.status;
-                log.snapshotScheduledHours = crew.scheduledHours;
-                await this.dailyLogsRepository.save(log);
-                updatedCount++;
-            }
-        }
-
-        this.logger.log(`[BACKFILL] Successfully migrated ${updatedCount} logs.`);
-        return { message: `Backfilled ${updatedCount} logs`, totalFound: count };
-    }
+    return {
+      year,
+      monthlyRevenue,
+    };
+  }
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { apiClient } from "@/lib/api"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -29,6 +30,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
+import { Spinner } from "@/components/ui/spinner"
 import { Plus, Edit2, Trash2, Settings, Wrench, Shield, Sparkles } from "lucide-react"
 
 interface ServiceItem {
@@ -41,74 +43,28 @@ interface ServiceItem {
     description?: string
 }
 
-const DEFAULT_SERVICES: ServiceItem[] = [
-    {
-        id: "SVC-001",
-        name: "HVAC Service",
-        category: "Maintenance",
-        pricingType: "per-service",
-        rate: 250,
-        status: "Active",
-        description: "Routine maintenance and troubleshooting for heating, ventilation, and air conditioning units."
-    },
-    {
-        id: "SVC-002",
-        name: "Deep Cleaning Service",
-        category: "Cleaning",
-        pricingType: "per-service",
-        rate: 350,
-        status: "Active",
-        description: "Thorough deep cleaning services for residential and commercial units."
-    },
-    {
-        id: "SVC-003",
-        name: "Pest Control Service",
-        category: "Pest Control",
-        pricingType: "per-service",
-        rate: 200,
-        status: "Active",
-        description: "General indoor and outdoor pest control treatment targeting insects and rodents."
-    },
-    {
-        id: "SVC-004",
-        name: "Plumbing Repair",
-        category: "Maintenance",
-        pricingType: "hourly",
-        rate: 120,
-        status: "Active",
-        description: "Leak detection, pipe repairs, fixture installations, and generic plumbing issues."
-    },
-    {
-        id: "SVC-005",
-        name: "Electrical Checkup",
-        category: "Maintenance",
-        pricingType: "hourly",
-        rate: 150,
-        status: "Active",
-        description: "Full inspection of electrical wiring, circuit breakers, and light fixture troubleshooting."
-    },
-    {
-        id: "SVC-006",
-        name: "Window Washing",
-        category: "Cleaning",
-        pricingType: "contract-based",
-        rate: 600,
-        status: "Inactive",
-        description: "High-reach external window cleaning for commercial and residential buildings."
-    }
-]
-
 export default function Services() {
-    const [services, setServices] = useState<ServiceItem[]>(() => {
-        const stored = localStorage.getItem("osool_services")
-        return stored ? JSON.parse(stored) : DEFAULT_SERVICES
-    })
+    const [services, setServices] = useState<ServiceItem[]>([])
+    const [loading, setLoading] = useState(true)
+
+    const fetchServices = async () => {
+        try {
+            setLoading(true)
+            const response = await apiClient("/services")
+            if (!response.ok) throw new Error("Failed to fetch services")
+            const data = await response.json()
+            setServices(data)
+        } catch (error) {
+            console.error("Error fetching services:", error)
+            toast.error("Failed to load services from backend")
+        } finally {
+            setLoading(false)
+        }
+    }
 
     useEffect(() => {
-        localStorage.setItem("osool_services", JSON.stringify(services))
-    }, [services])
-
-
+        fetchServices()
+    }, [])
 
     // Dialog control states
     const [isFormOpen, setIsFormOpen] = useState(false)
@@ -164,7 +120,7 @@ export default function Services() {
         setIsFormOpen(true)
     }
 
-    const handleFormSubmit = (e: React.FormEvent) => {
+    const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
         if (!formData.name.trim()) {
@@ -187,37 +143,40 @@ export default function Services() {
             return
         }
 
-        if (serviceToEdit) {
-            // Edit Mode
-            setServices(prev => prev.map(item => 
-                item.id === serviceToEdit.id 
-                    ? { ...item, ...formData, category: categoryToSubmit, rate: rateNum }
-                    : item
-            ))
-            toast.success("Service updated successfully")
-        } else {
-            // Create Mode
-            const nextIdNum = services.length > 0 
-                ? Math.max(...services.map(s => parseInt(s.id.split("-")[1]))) + 1 
-                : 1
-            const newId = `SVC-${String(nextIdNum).padStart(3, "0")}`
-
-            const newService: ServiceItem = {
-                id: newId,
-                name: formData.name,
-                category: categoryToSubmit,
-                pricingType: formData.pricingType,
-                rate: rateNum,
-                status: formData.status,
-                description: formData.description
-            }
-
-            setServices(prev => [newService, ...prev])
-            toast.success("New service added successfully")
+        const payload = {
+            name: formData.name.trim(),
+            category: categoryToSubmit,
+            pricingType: formData.pricingType,
+            rate: rateNum,
+            status: formData.status,
+            description: formData.description.trim() || undefined
         }
 
-        setIsFormOpen(false)
-        resetForm()
+        try {
+            if (serviceToEdit) {
+                // Edit Mode
+                const response = await apiClient(`/services/${serviceToEdit.id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify(payload)
+                })
+                if (!response.ok) throw new Error("Failed to update service")
+                toast.success("Service updated successfully")
+            } else {
+                // Create Mode
+                const response = await apiClient("/services", {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                })
+                if (!response.ok) throw new Error("Failed to create service")
+                toast.success("New service added successfully")
+            }
+            fetchServices()
+            setIsFormOpen(false)
+            resetForm()
+        } catch (error) {
+            console.error("Error saving service:", error)
+            toast.error(serviceToEdit ? "Failed to update service" : "Failed to create service")
+        }
     }
 
     const handleOpenDelete = (service: ServiceItem) => {
@@ -225,12 +184,22 @@ export default function Services() {
         setIsDeleteDialogOpen(true)
     }
 
-    const handleDeleteConfirm = () => {
+    const handleDeleteConfirm = async () => {
         if (!serviceToDelete) return
-        setServices(prev => prev.filter(item => item.id !== serviceToDelete.id))
-        toast.success(`Service "${serviceToDelete.name}" deleted`)
-        setIsDeleteDialogOpen(false)
-        setServiceToDelete(null)
+        try {
+            const response = await apiClient(`/services/${serviceToDelete.id}`, {
+                method: "DELETE"
+            })
+            if (!response.ok) throw new Error("Failed to delete service")
+            toast.success(`Service "${serviceToDelete.name}" deleted`)
+            fetchServices()
+        } catch (error) {
+            console.error("Error deleting service:", error)
+            toast.error("Failed to delete service")
+        } finally {
+            setIsDeleteDialogOpen(false)
+            setServiceToDelete(null)
+        }
     }
 
     // Filtered list (retained naming for simplicity)
@@ -248,6 +217,14 @@ export default function Services() {
         ? Math.round(services.reduce((acc, s) => acc + s.rate, 0) / services.length)
         : 0
     const inactiveServices = totalServices - activeServices
+
+    if (loading) {
+        return (
+            <div className="flex h-[50vh] items-center justify-center">
+                <Spinner className="h-8 w-8 text-[#011f5f]" />
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-6">
@@ -317,7 +294,6 @@ export default function Services() {
                 <Table>
                     <TableHeader className="bg-muted/50">
                         <TableRow>
-                            <TableHead className="w-[80px]">ID</TableHead>
                             <TableHead>Service Name</TableHead>
                             <TableHead>Category</TableHead>
                             <TableHead>Pricing Model</TableHead>
@@ -329,14 +305,13 @@ export default function Services() {
                     <TableBody>
                         {filteredServices.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                                     No services found matching the criteria.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredServices.map((service) => (
                                 <TableRow key={service.id} className="hover:bg-muted/30 transition-colors">
-                                    <TableCell className="font-mono text-xs font-semibold text-gray-500">{service.id}</TableCell>
                                     <TableCell>
                                         <div className="font-medium text-gray-900">{service.name}</div>
                                         {service.description && (

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { Spinner } from "@/components/ui/spinner"
+import { apiClient } from "@/lib/api"
 
 
 import { Button } from "@/components/ui/button"
@@ -26,7 +27,7 @@ import {
 } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
 
-import type { Crew, Building } from "@/types"
+import type { Crew } from "@/types"
 
 interface AddCrewModalProps {
     children: React.ReactNode
@@ -39,22 +40,10 @@ export function AddCrewModal({ children, crew, onSave }: AddCrewModalProps) {
     const [lastName, setLastName] = useState("")
     const [role, setRole] = useState("")
     const [date, setDate] = useState<Date>()
-    const [buildingId, setBuildingId] = useState("")
     const [status, setStatus] = useState("Active")
     const [scheduledHours, setScheduledHours] = useState("8")
     const [open, setOpen] = useState(false)
-    const [buildings, setBuildings] = useState<Building[]>([])
     const [loading, setLoading] = useState(false)
-
-    // Fetch Buildings
-    useEffect(() => {
-        if (open) {
-            fetch(`${import.meta.env.VITE_API_URL}/buildings`)
-                .then(res => res.json())
-                .then(data => setBuildings(data))
-                .catch(err => console.error("Failed to fetch buildings", err))
-        }
-    }, [open])
 
     // Populate Form
     useEffect(() => {
@@ -67,7 +56,6 @@ export function AddCrewModal({ children, crew, onSave }: AddCrewModalProps) {
             } catch (e) {
                 console.error("Invalid date", e)
             }
-            setBuildingId(crew.building?.id || "")
             setStatus(crew.status)
             setScheduledHours(String(crew.scheduledHours || "8"))
         } else if (!crew && open) {
@@ -75,7 +63,6 @@ export function AddCrewModal({ children, crew, onSave }: AddCrewModalProps) {
             setLastName("")
             setRole("")
             setDate(undefined)
-            setBuildingId("")
             setStatus("Active")
             setScheduledHours("8")
         }
@@ -84,7 +71,7 @@ export function AddCrewModal({ children, crew, onSave }: AddCrewModalProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!date || !buildingId) return;
+        if (!date) return;
 
         setLoading(true)
         const payload = {
@@ -92,18 +79,16 @@ export function AddCrewModal({ children, crew, onSave }: AddCrewModalProps) {
             lastName,
             role,
             dateOfJoining: format(date, 'yyyy-MM-dd'),
-            buildingId,
             status,
             scheduledHours: parseFloat(scheduledHours) || 0
         }
 
         try {
-            const url = crew ? `${import.meta.env.VITE_API_URL}/crews/${crew.id}` : `${import.meta.env.VITE_API_URL}/crews`
+            const path = crew ? `/crews/${crew.id}` : '/crews'
             const method = crew ? 'PATCH' : 'POST'
 
-            const res = await fetch(url, {
+            const res = await apiClient(path, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             })
 
@@ -176,21 +161,7 @@ export function AddCrewModal({ children, crew, onSave }: AddCrewModalProps) {
                         <Label>Date of Joining</Label>
                         <DatePicker date={date} setDate={setDate} />
                     </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="building">Building</Label>
-                        <Select onValueChange={setBuildingId} value={buildingId} required>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select building" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {buildings.map((z) => (
-                                    <SelectItem key={z.id} value={z.id}>
-                                        {z.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+
                     <div className="grid gap-2">
                         <Label htmlFor="status">Status</Label>
                         <Select onValueChange={setStatus} value={status} required>

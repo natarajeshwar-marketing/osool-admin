@@ -26,15 +26,48 @@ interface FullCalendarProps {
   events?: CalendarEvent[];
   onDateClick?: (date: Date) => void;
   onEventClick?: (event: CalendarEvent) => void;
+  onEventDoubleClick?: (event: CalendarEvent) => void;
+  onEventDrop?: (event: CalendarEvent, targetDate: Date) => void;
   className?: string;
 }
 
-export function FullCalendar({ events = [], onDateClick, onEventClick, className }: FullCalendarProps) {
+export function FullCalendar({ events = [], onDateClick, onEventClick, onEventDoubleClick, onEventDrop, className }: FullCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [draggedOverDate, setDraggedOverDate] = useState<string | null>(null);
 
   const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
   const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
   const today = () => setCurrentDate(new Date());
+
+  const handleDragStart = (e: React.DragEvent, event: CalendarEvent) => {
+    e.dataTransfer.setData('text/plain', event.id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnd = () => {
+    setDraggedOverDate(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDragEnter = (e: React.DragEvent, date: Date) => {
+    e.preventDefault();
+    setDraggedOverDate(date.toDateString());
+  };
+
+  const handleDrop = (e: React.DragEvent, date: Date) => {
+    e.preventDefault();
+    setDraggedOverDate(null);
+    const eventId = e.dataTransfer.getData('text/plain');
+    if (!eventId) return;
+
+    const event = events.find(ev => ev.id === eventId);
+    if (event && onEventDrop) {
+      onEventDrop(event, date);
+    }
+  };
 
   const renderHeader = () => {
     return (
@@ -90,43 +123,57 @@ export function FullCalendar({ events = [], onDateClick, onEventClick, className
 
         // Find events for this day
         const dayEvents = events.filter(e => isSameDay(e.date, cloneDay));
+        const isDraggedOver = draggedOverDate === cloneDay.toDateString();
 
         days.push(
           <div
             key={day.toString()}
             className={cn(
-              "border-b border-r p-2 flex flex-col transition-colors cursor-pointer hover:bg-slate-50 min-h-0",
+              "border-b border-r p-2 flex flex-col transition-all cursor-pointer min-h-0 relative",
               !isSameMonth(day, monthStart) ? "text-slate-400 bg-slate-50/50" : "text-slate-700 bg-white",
               isSameDay(day, new Date()) ? "ring-2 ring-inset ring-[#001e60]" : "",
-              i === 0 ? "border-l" : "" // left border for the first column
+              i === 0 ? "border-l" : "", // left border for the first column
+              isDraggedOver ? "bg-[#001e60]/5 border-[#001e60] ring-2 ring-inset ring-[#001e60]/30 shadow-inner scale-[0.98]" : "hover:bg-slate-50"
             )}
             onClick={() => onDateClick && onDateClick(cloneDay)}
+            onDragOver={handleDragOver}
+            onDragEnter={(e) => handleDragEnter(e, cloneDay)}
+            onDrop={(e) => handleDrop(e, cloneDay)}
           >
-            <div className="flex justify-end mb-1">
-              <span className={cn(
-                "flex items-center justify-center h-7 w-7 rounded-full text-sm",
-                isSameDay(day, new Date()) ? "bg-[#001e60] text-white font-bold" : ""
-              )}>
-                {formattedDate}
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
-              {dayEvents.map(event => (
-                <div
-                  key={event.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEventClick && onEventClick(event);
-                  }}
-                  className={cn(
-                    "text-xs px-2 py-1 rounded truncate text-white cursor-pointer hover:opacity-90 transition-opacity font-medium",
-                    event.color || "bg-[#001e60]"
-                  )}
-                  title={event.title}
-                >
-                  {event.title}
-                </div>
-              ))}
+            <div className="flex flex-col h-full w-full">
+              <div className="flex justify-end mb-1">
+                <span className={cn(
+                  "flex items-center justify-center h-7 w-7 rounded-full text-sm",
+                  isSameDay(day, new Date()) ? "bg-[#001e60] text-white font-bold" : ""
+                )}>
+                  {formattedDate}
+                </span>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
+                {dayEvents.map(event => (
+                  <div
+                    key={event.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, event)}
+                    onDragEnd={handleDragEnd}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEventClick && onEventClick(event);
+                    }}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      onEventDoubleClick && onEventDoubleClick(event);
+                    }}
+                    className={cn(
+                      "text-xs px-2 py-1 rounded truncate text-white cursor-grab active:cursor-grabbing hover:opacity-90 hover:scale-[1.02] active:scale-95 transition-all font-medium select-none shadow-sm",
+                      event.color || "bg-[#001e60]"
+                    )}
+                    title={event.title}
+                  >
+                    {event.title}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         );

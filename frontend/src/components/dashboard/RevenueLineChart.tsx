@@ -14,6 +14,7 @@ import { Line } from 'react-chartjs-2';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TrendingUp } from "lucide-react"
+import { apiClient } from "@/lib/api"
 
 ChartJS.register(
     CategoryScale,
@@ -33,7 +34,7 @@ export function RevenueLineChart() {
     useEffect(() => {
         const fetchRevenue = async () => {
             try {
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/daily-logs/revenue?year=${year}`)
+                const res = await apiClient(`/daily-logs/revenue?year=${year}`)
                 if (!res.ok) throw new Error('Failed to fetch revenue')
                 const data = await res.json()
                 setRevenueData(data.monthlyRevenue)

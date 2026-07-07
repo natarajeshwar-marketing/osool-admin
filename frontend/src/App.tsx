@@ -4,20 +4,24 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout"
 import Dashboard from "@/pages/Dashboard"
 import CrewManagement from "@/pages/CrewManagement"
 import BuildingManagement from "@/pages/BuildingManagement"
-import DailyLogEntry from "@/pages/DailyLogEntry"
-import AllLogEntries from "@/pages/AllLogEntries"
 import LoginPage from "@/pages/LoginPage"
 import UserManagement from "@/pages/UserManagement"
 import SchedulesCalendar from "@/pages/SchedulesCalendar"
 import JobManagement from "@/pages/JobManagement"
 import AddSchedule from "@/pages/AddSchedule"
+import EditSchedule from "@/pages/EditSchedule"
 import Services from "./pages/Services"
+import AddEnquiry from "@/pages/AddEnquiry"
+import AllEnquiries from "@/pages/AllEnquiries"
 // Using relative path to force resolve
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/context/AuthContext"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import { UserRole } from "@/types"
+
+// Clean up legacy local storage services data
+localStorage.removeItem("osool_services");
 
 function App() {
   return (
@@ -51,24 +55,9 @@ function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="/daily-log" element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <DailyLogEntry />
-                </DashboardLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/all-logs" element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <AllLogEntries />
-                </DashboardLayout>
-              </ProtectedRoute>
-            } />
 
             <Route path="/users" element={
-              <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN]}>
+              <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]}>
                 <DashboardLayout>
                   <UserManagement />
                 </DashboardLayout>
@@ -95,6 +84,30 @@ function App() {
               <ProtectedRoute>
                 <DashboardLayout>
                   <AddSchedule />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/schedules/edit" element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <EditSchedule />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/enquiries/add" element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <AddEnquiry />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/enquiries/all" element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <AllEnquiries />
                 </DashboardLayout>
               </ProtectedRoute>
             } />

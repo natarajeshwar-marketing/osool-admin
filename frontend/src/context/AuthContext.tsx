@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { UserRole } from "@/types";
+import { apiClient } from "@/lib/api";
 
 
 interface User {
@@ -13,7 +14,7 @@ interface User {
 interface AuthContextType {
     user: User | null;
     token: string | null;
-    login: (token: string, user: User) => void;
+    login: (user: User) => void;
     logout: () => void;
     isAuthenticated: boolean;
 }
@@ -22,50 +23,72 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Automatically mock authentication as Super Admin
-        const mockedUser: User = {
-            id: "mock-super-admin",
-            email: "admin@osool.com",
-            name: "Osool Admin",
-            role: UserRole.SUPER_ADMIN
+        const checkAuth = async () => {
+            try {
+                const res = await apiClient("/auth/profile");
+                if (res.ok) {
+                    const userData = await res.json();
+                    setUser(userData);
+                } else {
+                    setUser(null);
+                }
+            } catch (e) {
+                console.error("Failed to verify authentication profile", e);
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
         };
-        const mockedToken = "mock-jwt-token";
 
-        setToken(mockedToken);
-        setUser(mockedUser);
-        setLoading(false);
+        checkAuth();
     }, []);
 
-    const login = (newToken: string, newUser: User) => {
-        localStorage.setItem("token", newToken);
-        localStorage.setItem("user", JSON.stringify(newUser));
-        setToken(newToken);
+    // Listen to unauthorized events from fetch interceptor to log out immediately
+    useEffect(() => {
+        const handleUnauthorized = () => {
+            setUser(null);
+        };
+        window.addEventListener('auth-unauthorized', handleUnauthorized);
+        return () => window.removeEventListener('auth-unauthorized', handleUnauthorized);
+    }, []);
+
+    const login = (newUser: User) => {
         setUser(newUser);
     };
 
-    const logout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        setToken(null);
+    const logout = async () => {
+        try {
+            await apiClient("/auth/logout", {
+                method: "POST"
+            });
+        } catch (e) {
+            console.error("Failed to sign out on server", e);
+        }
         setUser(null);
     };
 
     if (loading) {
-        return <div className="flex h-screen items-center justify-center">Loading...</div>;
+        return (
+            <div className="flex h-screen items-center justify-center bg-white dark:bg-neutral-950">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#011f5f] border-t-transparent"></div>
+                    <p className="text-sm font-medium text-neutral-500">Verifying session...</p>
+                </div>
+            </div>
+        );
     }
 
     return (
         <AuthContext.Provider
             value={{
                 user,
-                token,
+                token: user ? "cookie-authenticated" : null,
                 login,
                 logout,
-                isAuthenticated: !!token,
+                isAuthenticated: !!user,
             }}
         >
             {children}

@@ -4,59 +4,155 @@ import { UpdateCrewDto } from './dto/update-crew.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Crew } from '../entities/crew.entity';
-import { Zone } from '../entities/zone.entity';
+import { Building } from '../entities/building.entity';
+import { Schedule } from '../entities/schedule.entity';
 
 @Injectable()
 export class CrewsService {
   constructor(
     @InjectRepository(Crew)
     private crewRepository: Repository<Crew>,
-    @InjectRepository(Zone)
-    private zoneRepository: Repository<Zone>,
-  ) { }
+    @InjectRepository(Building)
+    private buildingRepository: Repository<Building>,
+    @InjectRepository(Schedule)
+    private scheduleRepository: Repository<Schedule>,
+  ) {}
+
+  private async getCrewRevenueMap(): Promise<Map<string, number>> {
+    const revenueData = await this.crewRepository.query(`
+      SELECT 
+        sc.crew_id AS "crewId",
+        SUM(COALESCE(s.total_cost, 0) / s_counts.crew_count) AS "revenue"
+      FROM schedule_crews sc
+      JOIN schedules s ON s.id = sc.schedule_id
+      JOIN (
+        SELECT 
+          schedule_id, 
+          COUNT(crew_id) AS crew_count
+        FROM schedule_crews
+        GROUP BY schedule_id
+      ) s_counts ON s_counts.schedule_id = sc.schedule_id
+      GROUP BY sc.crew_id
+    `);
+
+    const map = new Map<string, number>();
+    if (revenueData && Array.isArray(revenueData)) {
+      revenueData.forEach((row: any) => {
+        map.set(row.crewId, parseFloat(row.revenue) || 0);
+      });
+    }
+    return map;
+  }
+
+  private async getSingleCrewRevenue(crewId: string): Promise<number> {
+    const result = await this.crewRepository.query(
+      `
+      SELECT 
+        SUM(COALESCE(s.total_cost, 0) / s_counts.crew_count) AS "revenue"
+      FROM schedule_crews sc
+      JOIN schedules s ON s.id = sc.schedule_id
+      JOIN (
+        SELECT 
+          schedule_id, 
+          COUNT(crew_id) AS crew_count
+        FROM schedule_crews
+        GROUP BY schedule_id
+      ) s_counts ON s_counts.schedule_id = sc.schedule_id
+      WHERE sc.crew_id = $1
+      GROUP BY sc.crew_id
+    `,
+      [crewId],
+    );
+    return result && result[0] ? parseFloat(result[0].revenue) || 0 : 0;
+  }
 
   async create(createCrewDto: CreateCrewDto) {
-    const { zoneId, ...crewData } = createCrewDto;
+    const { buildingId, ...crewData } = createCrewDto;
 
-    const zone = await this.zoneRepository.findOne({ where: { id: zoneId } });
-    if (!zone) {
-      throw new NotFoundException(`Zone with ID ${zoneId} not found`);
+    let building: Building | null = null;
+    if (buildingId) {
+      building = await this.buildingRepository.findOne({
+        where: { id: buildingId },
+      });
+      if (!building) {
+        throw new NotFoundException(`Building with ID ${buildingId} not found`);
+      }
     }
 
     const crew = this.crewRepository.create({
       ...crewData,
-      zone,
+      building,
     });
 
-    return this.crewRepository.save(crew);
+    const savedCrew = await this.crewRepository.save(crew);
+    savedCrew.revenue = 0;
+    return savedCrew;
   }
 
-  findAll() {
-    return this.crewRepository.find({ relations: ['zone'] });
+  async findAll(page?: number, limit?: number) {
+    const options: any = {
+      relations: ['building'],
+      order: { firstName: 'ASC', lastName: 'ASC' },
+    };
+    if (page && limit) {
+      options.skip = (page - 1) * limit;
+      options.take = limit;
+    }
+    const crews = await this.crewRepository.find(options);
+    const revenueMap = await this.getCrewRevenueMap();
+    return crews.map((crew) => {
+      crew.revenue = parseFloat((revenueMap.get(crew.id) || 0).toFixed(2));
+      return crew;
+    });
   }
 
-  findOne(id: string) {
-    return this.crewRepository.findOne({ where: { id }, relations: ['zone'] });
+  async findOne(id: string) {
+    const crew = await this.crewRepository.findOne({
+      where: { id },
+      relations: ['building'],
+    });
+
+    if (!crew) {
+      return null;
+    }
+
+    const revenue = await this.getSingleCrewRevenue(crew.id);
+    crew.revenue = parseFloat(revenue.toFixed(2));
+    return crew;
   }
 
   async update(id: string, updateCrewDto: UpdateCrewDto) {
-    const crew = await this.crewRepository.findOne({ where: { id }, relations: ['zone'] });
+    const crew = await this.crewRepository.findOne({
+      where: { id },
+      relations: ['building'],
+    });
 
     if (!crew) {
       throw new NotFoundException(`Crew with ID ${id} not found`);
     }
 
-    if (updateCrewDto.zoneId) {
-      const zone = await this.zoneRepository.findOne({ where: { id: updateCrewDto.zoneId } });
-      if (!zone) {
-        throw new NotFoundException(`Zone with ID ${updateCrewDto.zoneId} not found`);
+    if (updateCrewDto.buildingId !== undefined) {
+      if (updateCrewDto.buildingId) {
+        const building = await this.buildingRepository.findOne({
+          where: { id: updateCrewDto.buildingId },
+        });
+        if (!building) {
+          throw new NotFoundException(
+            `Building with ID ${updateCrewDto.buildingId} not found`,
+          );
+        }
+        crew.building = building;
+      } else {
+        crew.building = null;
       }
-      crew.zone = zone;
     }
 
     Object.assign(crew, updateCrewDto);
 
-    return this.crewRepository.save(crew);
+    const savedCrew = await this.crewRepository.save(crew);
+    const revenue = await this.getSingleCrewRevenue(savedCrew.id);
+    savedCrew.revenue = parseFloat(revenue.toFixed(2));
+    return savedCrew;
   }
 
   async remove(id: string) {

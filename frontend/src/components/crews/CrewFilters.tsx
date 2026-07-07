@@ -7,7 +7,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import type { Building } from "@/types"
+
 
 interface CrewFiltersProps {
     searchTerm: string
@@ -16,9 +16,6 @@ interface CrewFiltersProps {
     onStatusChange: (value: string) => void
     roleFilter: string
     onRoleChange: (value: string) => void
-    buildingFilter: string
-    onBuildingChange: (value: string) => void
-    buildings: Building[]
 }
 
 export function CrewFilters({
@@ -27,10 +24,7 @@ export function CrewFilters({
     statusFilter,
     onStatusChange,
     roleFilter,
-    onRoleChange,
-    buildingFilter,
-    onBuildingChange,
-    buildings
+    onRoleChange
 }: CrewFiltersProps) {
     return (
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -55,6 +49,7 @@ export function CrewFilters({
                         <SelectItem value="active">Active</SelectItem>
                         <SelectItem value="on leave">On Leave</SelectItem>
                         <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="maintenance">Maintenance</SelectItem>
                     </SelectContent>
                 </Select>
 
@@ -67,21 +62,8 @@ export function CrewFilters({
                         <SelectItem value="all">All Roles</SelectItem>
                         <SelectItem value="technician">Technician</SelectItem>
                         <SelectItem value="cleaner">Cleaner</SelectItem>
-                    </SelectContent>
-                </Select>
-
-                {/* Building Filter */}
-                <Select value={buildingFilter} onValueChange={onBuildingChange}>
-                    <SelectTrigger className="w-[160px] bg-white dark:bg-neutral-950">
-                        <SelectValue placeholder="Building" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Buildings</SelectItem>
-                        {buildings.map((building) => (
-                            <SelectItem key={building.id} value={building.name}>
-                                {building.name}
-                            </SelectItem>
-                        ))}
+                        <SelectItem value="car washer">Car Washer</SelectItem>
+                        <SelectItem value="pest control">Pest Control</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

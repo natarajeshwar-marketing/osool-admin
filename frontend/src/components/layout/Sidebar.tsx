@@ -2,7 +2,7 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { NavLink, useLocation } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, Users, Building, LogOut, ClipboardList, Calendar, ChevronDown, ChevronRight, Settings } from "lucide-react"
+import { LayoutDashboard, Users, Building, LogOut, Calendar, ChevronDown, ChevronRight, Settings, MessageSquare } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { UserRole } from "@/types"
 
@@ -11,14 +11,14 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> { }
 interface SubMenuItem {
     label: string
     href: string
-    role?: UserRole
+    allowedRoles?: UserRole[]
 }
 
 interface MenuItem {
     label: string
     icon: React.ElementType
     href?: string
-    role?: UserRole
+    allowedRoles?: UserRole[]
     subItems?: SubMenuItem[]
 }
 
@@ -39,6 +39,14 @@ export const menuItems: MenuItem[] = [
         href: "/crews",
     },
     {
+        label: "Enquiries",
+        icon: MessageSquare,
+        subItems: [
+            { label: "Add Enquiries", href: "/enquiries/add" },
+            { label: "All Enquiries", href: "/enquiries/all" }
+        ]
+    },
+    {
         label: "Schedules",
         icon: Calendar,
         subItems: [
@@ -47,22 +55,13 @@ export const menuItems: MenuItem[] = [
             { label: "Add Schedule", href: "/schedules/add" }
         ]
     },
-    {
-        label: "Daily Log Entry",
-        icon: ClipboardList,
-        href: "/daily-log",
-    },
-    {
-        label: "All Log Entries",
-        icon: ClipboardList,
-        href: "/all-logs",
-    },
+
     {
         label: "Settings",
         icon: Settings,
         subItems: [
             { label: "Services", href: "/settings/services" },
-            { label: "Users", href: "/users", role: UserRole.SUPER_ADMIN }
+            { label: "Users", href: "/users", allowedRoles: [UserRole.SUPER_ADMIN, UserRole.ADMIN] }
         ]
     }
 ]
@@ -98,7 +97,7 @@ export function Sidebar({ className }: SidebarProps) {
                 <div className="px-3 py-2">
                     <div className="space-y-1">
                         {menuItems.map((item) => {
-                            if (item.role && user?.role !== item.role) return null;
+                            if (item.allowedRoles && (!user || !item.allowedRoles.includes(user.role))) return null;
 
                             if (item.subItems) {
                                 const isOpen = openMenus[item.label];
@@ -125,7 +124,7 @@ export function Sidebar({ className }: SidebarProps) {
                                         {isOpen && (
                                             <div className="pl-11 pr-4 space-y-1">
                                                 {item.subItems.map(subItem => {
-                                                    if (subItem.role && user?.role !== subItem.role) return null;
+                                                    if (subItem.allowedRoles && (!user || !subItem.allowedRoles.includes(user.role))) return null;
                                                     
                                                     return (
                                                         <NavLink

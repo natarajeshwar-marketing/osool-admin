@@ -6,12 +6,12 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MoreHorizontal } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
-import type { Building, Crew } from "@/types"
+import type { Building } from "@/types"
 import { toast } from "sonner"
+import { apiClient } from "@/lib/api"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -33,14 +33,13 @@ import { AddBuildingModal } from "@/components/buildings/AddBuildingModal"
 
 interface BuildingTableProps {
     buildings: Building[]
-    crews: Crew[]
     onBuildingUpdated?: () => void
 }
 
-export function BuildingTable({ buildings, crews, onBuildingUpdated }: BuildingTableProps) {
+export function BuildingTable({ buildings, onBuildingUpdated }: BuildingTableProps) {
     const handleDelete = async (id: string) => {
         try {
-            await fetch(`${import.meta.env.VITE_API_URL}/buildings/${id}`, {
+            await apiClient(`/buildings/${id}`, {
                 method: 'DELETE'
             })
             toast.success("Building deleted successfully")
@@ -51,60 +50,33 @@ export function BuildingTable({ buildings, crews, onBuildingUpdated }: BuildingT
         }
     }
 
-    const getBuildingMetrics = (building: Building) => {
-        const buildingCrews = crews.filter(crew => crew.building?.id === building.id)
-        const totalCrews = buildingCrews.length
-        return {
-            totalCrews,
-            totalUtilization: building.utilization || 0,
-            revenue: building.totalRevenue || 0
-        }
-    }
-
     return (
         <Card>
             <CardContent className="p-0 max-h-[600px] overflow-auto relative">
                 <Table>
                     <TableHeader className="sticky top-0 z-10 bg-background">
                         <TableRow>
-                            <TableHead className="py-4 px-4 bg-muted/50">BUILDING NAME</TableHead>
-                            <TableHead className="text-center py-4 px-4 bg-muted/50">TOTAL CREWS</TableHead>
-                            <TableHead className="text-center py-4 px-4 bg-muted/50">TOTAL UTILIZATION</TableHead>
-                            <TableHead className="py-4 px-4 bg-muted/50">STATUS</TableHead>
-                            <TableHead className="text-right py-4 px-4 bg-muted/50">TOTAL REVENUE</TableHead>
+                            <TableHead className="py-4 px-4 bg-muted/50">BUILDING NUMBER</TableHead>
+                            <TableHead className="py-4 px-4 bg-muted/50">ZONE</TableHead>
+                            <TableHead className="py-4 px-4 bg-muted/50">APARTMENT TYPE</TableHead>
+                            <TableHead className="py-4 px-4 bg-muted/50">APARTMENT NUMBER</TableHead>
+                            <TableHead className="py-4 px-4 bg-muted/50">TENANT NAME</TableHead>
+                            <TableHead className="py-4 px-4 bg-muted/50">CONTACT NUMBER</TableHead>
+                            <TableHead className="py-4 px-4 bg-muted/50">EMAIL ADDRESS</TableHead>
                             <TableHead className="w-[50px] py-4 px-4 bg-muted/50"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {buildings.map((building) => {
-                            const { totalCrews, totalUtilization, revenue } = getBuildingMetrics(building)
                             return (
                                 <TableRow key={building.id} className="hover:bg-muted/5">
-                                    <TableCell className="font-semibold py-4 px-4">{building.name}</TableCell>
-                                    <TableCell className="text-center py-4 px-4">{totalCrews}</TableCell>
-                                    <TableCell className="text-center py-4 px-4">
-                                        {totalCrews > 0 ? (
-                                            <span className={totalUtilization >= 90 ? "text-green-600 font-bold" : "text-neutral-600"}>
-                                                {totalUtilization}%
-                                            </span>
-                                        ) : (
-                                            <span className="text-muted-foreground">-</span>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="py-4 px-4">
-                                        <Badge
-                                            variant="secondary"
-                                            className={`font-normal ${building.status === "Active"
-                                                ? "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
-                                                : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-400"
-                                                }`}
-                                        >
-                                            {building.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right py-4 px-4 font-medium">
-                                        SAR {revenue.toLocaleString()}
-                                    </TableCell>
+                                    <TableCell className="font-semibold py-4 px-4">{building.buildingNumber || "-"}</TableCell>
+                                    <TableCell className="py-4 px-4">{building.zone || "-"}</TableCell>
+                                    <TableCell className="py-4 px-4">{building.type || "-"}</TableCell>
+                                    <TableCell className="py-4 px-4">{building.apartmentNumber || "-"}</TableCell>
+                                    <TableCell className="py-4 px-4">{building.tenantName || "-"}</TableCell>
+                                    <TableCell className="py-4 px-4">{building.contactNumber || "-"}</TableCell>
+                                    <TableCell className="py-4 px-4 text-neutral-600 dark:text-neutral-400">{building.emailAddress || "-"}</TableCell>
                                     <TableCell className="py-4 px-4">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>

@@ -1,32 +1,44 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
-import { Zone } from './zone.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
+import { Building } from './building.entity';
 
 @Entity()
 export class Crew {
-    @PrimaryGeneratedColumn('uuid')
-    id: string;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-    @Column()
-    firstName: string;
+  @Column()
+  firstName: string;
 
-    @Column()
-    lastName: string;
+  @Column()
+  lastName: string;
 
-    @Column({ type: 'date', default: () => 'CURRENT_DATE' })
-    dateOfJoining: string;
+  @Column({ type: 'date', default: () => 'CURRENT_DATE' })
+  dateOfJoining: string;
 
-    @ManyToOne(() => Zone, (zone) => zone.crews)
-    zone: Zone;
+  @ManyToOne(() => Building, (building) => building.crews, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'building_id' })
+  building: Building | null;
 
-    @Column()
-    role: string; // Technician, Cleaner
+  @Column({ name: 'building_id', nullable: true })
+  buildingId: string;
 
-    @Column({ default: 'Active' })
-    status: string;
+  @Column()
+  role: string; // Technician, Cleaner
 
-    @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
-    scheduledHours: number;
+  @Column({ default: 'Active' })
+  status: string;
 
-    @Column({ type: 'int', default: 0 })
-    efficiency: number;
+  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
+  scheduledHours: number;
+
+  revenue: number;
 }

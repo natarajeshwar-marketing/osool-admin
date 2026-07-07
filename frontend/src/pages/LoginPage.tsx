@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import heroImage from "@/assets/login-hero.png";
 import logoWhite from "@/assets/logo-white.png";
+import { apiClient } from "@/lib/api";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -23,9 +24,8 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+            const res = await apiClient("/auth/login", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),
             });
 
@@ -34,7 +34,7 @@ export default function LoginPage() {
             }
 
             const data = await res.json();
-            login(data.access_token, data.user);
+            login(data.user);
             toast.success("Logged in successfully");
             navigate("/");
         } catch (error) {

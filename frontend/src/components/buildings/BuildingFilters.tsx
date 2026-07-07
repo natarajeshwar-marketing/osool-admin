@@ -57,9 +57,8 @@ export function BuildingFilters({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="residential">Residential</SelectItem>
-                        <SelectItem value="commercial">Commercial</SelectItem>
-                        <SelectItem value="industrial">Industrial</SelectItem>
+                        <SelectItem value="2 BHK">2 BHK</SelectItem>
+                        <SelectItem value="3 BHK">3 BHK</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

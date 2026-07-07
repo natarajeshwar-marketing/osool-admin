@@ -9,8 +9,12 @@ interface BuildingStatsProps {
 
 export function BuildingStats({ buildings, crews }: BuildingStatsProps) {
     const totalUtilization = crews.length > 0
-        ? Math.round(crews.reduce((acc, crew) => acc + crew.efficiency, 0) / crews.length)
+        ? Math.round((crews.reduce((acc, crew) => acc + (crew.scheduledHours || 0), 0) / (crews.length * 8)) * 100)
         : 0
+
+    const totalRevenue = crews.length > 0
+        ? crews.reduce((acc, crew) => acc + (crew.revenue || 0), 0)
+        : 125000
 
     return (
         <div className="grid gap-4 md:grid-cols-3">
@@ -28,7 +32,7 @@ export function BuildingStats({ buildings, crews }: BuildingStatsProps) {
             />
             <StatCard
                 title="Total Revenue"
-                value="SAR 125,000"
+                value={`SAR ${totalRevenue.toLocaleString()}`}
                 className=""
                 icon={<DollarSign className="h-4 w-4 text-green-500" />}
             />

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays } from "date-fns"
 import type { DateRange } from "react-day-picker"
 import { toast } from "sonner"
+import { apiClient } from "@/lib/api"
 import { StatCard } from "@/components/shared/StatCard"
 import { RevenueBarChart } from "@/components/dashboard/RevenueBarChart"
 import { RevenueLineChart } from "@/components/dashboard/RevenueLineChart"
@@ -36,21 +37,11 @@ export default function Dashboard() {
                 if (date?.from) params.append('startDate', format(date.from, 'yyyy-MM-dd'))
                 if (date?.to) params.append('endDate', format(date.to, 'yyyy-MM-dd'))
 
-                const res = await fetch(`${import.meta.env.VITE_API_URL}/daily-logs/stats?${params.toString()}`)
+                const res = await apiClient(`/daily-logs/stats?${params.toString()}`)
                 if (!res.ok) throw new Error('Failed to fetch stats')
                 const data = await res.json()
 
-                // Inject dummy data for preview purposes if real data is empty
-                if (!data.cleaningRevenue && !data.maintenanceRevenue && !data.carWashRevenue && !data.pestControlRevenue) {
-                    data.cleaningRevenue = 14500.50;
-                    data.maintenanceRevenue = 22350.00;
-                    data.carWashRevenue = 8750.25;
-                    data.pestControlRevenue = 5400.00;
-                    
-                    if (!data.totalRevenue || data.totalRevenue === 0) {
-                        data.totalRevenue = data.cleaningRevenue + data.maintenanceRevenue + data.carWashRevenue + data.pestControlRevenue;
-                    }
-                }
+
 
                 setStats(data)
             } catch (err) {
@@ -130,7 +121,7 @@ export default function Dashboard() {
                 />
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
                 <StatCard
                     title="Cleaning Revenue"
                     value={`SAR ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(stats.cleaningRevenue || 0)}`}
@@ -140,12 +131,6 @@ export default function Dashboard() {
                 <StatCard
                     title="Maintenance Revenue"
                     value={`SAR ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(stats.maintenanceRevenue || 0)}`}
-                    valueClassName="text-2xl"
-                />
-
-                <StatCard
-                    title="Car Wash Revenue"
-                    value={`SAR ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(stats.carWashRevenue || 0)}`}
                     valueClassName="text-2xl"
                 />
 

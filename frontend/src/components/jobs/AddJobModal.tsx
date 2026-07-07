@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Spinner } from "@/components/ui/spinner"
+import { apiClient } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -78,12 +79,11 @@ export function AddJobModal({ children, job, buildings, crews, onSave }: AddJobM
         }
 
         try {
-            const url = job ? `${import.meta.env.VITE_API_URL}/jobs/${job.id}` : `${import.meta.env.VITE_API_URL}/jobs`
+            const path = job ? `/jobs/${job.id}` : '/jobs'
             const method = job ? 'PATCH' : 'POST'
 
-            const res = await fetch(url, {
+            const res = await apiClient(path, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             })
 

@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -9,32 +18,36 @@ import { UserRole } from '../entities/user.entity';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SUPER_ADMIN)
 export class UsersController {
-    constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
-    @Post()
-    create(@Body() createUserDto: CreateUserDto) {
-        return this.usersService.create(createUserDto);
-    }
+  @Post()
+  @Roles(UserRole.SUPER_ADMIN)
+  create(@Body() createUserDto: CreateUserDto) {
+    return this.usersService.create(createUserDto);
+  }
 
-    @Get()
-    findAll() {
-        return this.usersService.findAll();
-    }
+  @Get()
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  findAll() {
+    return this.usersService.findAll();
+  }
 
-    @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.usersService.findOneById(id);
-    }
+  @Get(':id')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  findOne(@Param('id') id: string) {
+    return this.usersService.findOneById(id);
+  }
 
-    @Patch(':id')
-    update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-        return this.usersService.update(id, updateUserDto);
-    }
+  @Patch(':id')
+  @Roles(UserRole.SUPER_ADMIN)
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.usersService.update(id, updateUserDto);
+  }
 
-    @Delete(':id')
-    remove(@Param('id') id: string) {
-        return this.usersService.remove(id);
-    }
+  @Delete(':id')
+  @Roles(UserRole.SUPER_ADMIN)
+  remove(@Param('id') id: string) {
+    return this.usersService.remove(id);
+  }
 }

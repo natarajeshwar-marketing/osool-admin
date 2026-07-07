@@ -4,10 +4,13 @@ import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CrewsModule } from './crews/crews.module';
-import { ZonesModule } from './zones/zones.module';
-import { DailyLogsModule } from './daily-logs/daily-logs.module';
+import { BuildingsModule } from './buildings/buildings.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { SchedulesModule } from './schedules/schedules.module';
+import { EnquiriesModule } from './enquiries/enquiries.module';
+import { ServicesModule } from './services/services.module';
+import { DailyLogsModule } from './daily-logs/daily-logs.module';
 
 @Module({
   imports: [
@@ -24,17 +27,20 @@ import { AuthModule } from './auth/auth.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true, // Auto-create tables (dev only)
+        synchronize: configService.get<string>('NODE_ENV') !== 'production',
       }),
       inject: [ConfigService],
     }),
     CrewsModule,
-    ZonesModule,
-    DailyLogsModule,
+    BuildingsModule,
     UsersModule,
     AuthModule,
+    SchedulesModule,
+    EnquiriesModule,
+    ServicesModule,
+    DailyLogsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

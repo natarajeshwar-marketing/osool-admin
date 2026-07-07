@@ -6,30 +6,21 @@ import { CrewStats } from "@/components/crews/CrewStats"
 import { CrewFilters } from "@/components/crews/CrewFilters"
 import { CrewTable } from "@/components/crews/CrewTable"
 import { Spinner } from "@/components/ui/spinner"
-import type { Crew, Building } from "@/types"
+import type { Crew } from "@/types"
+import { apiClient } from "@/lib/api"
 
 export default function CrewManagement() {
     const [crews, setCrews] = useState<Crew[]>([])
-    const [buildings, setBuildings] = useState<Building[]>([])
     const [searchTerm, setSearchTerm] = useState("")
     const [statusFilter, setStatusFilter] = useState("all")
     const [roleFilter, setRoleFilter] = useState("all")
-    const [buildingFilter, setBuildingFilter] = useState("all")
-    const [timeRange, setTimeRange] = useState("today")
     const [loading, setLoading] = useState(true)
 
     const fetchData = useCallback(async () => {
         try {
-            const [crewsRes, buildingsRes] = await Promise.all([
-                fetch(`${import.meta.env.VITE_API_URL}/crews`),
-                fetch(`${import.meta.env.VITE_API_URL}/buildings`)
-            ])
-
+            const crewsRes = await apiClient("/crews")
             const crewsData = await crewsRes.json()
-            const buildingsData = await buildingsRes.json()
-
             setCrews(crewsData)
-            setBuildings(buildingsData)
         } catch (error) {
             console.error("Failed to fetch data:", error)
         } finally {
@@ -48,9 +39,8 @@ export default function CrewManagement() {
 
         const matchesStatus = statusFilter === "all" || crew.status.toLowerCase() === statusFilter.toLowerCase()
         const matchesRole = roleFilter === "all" || crew.role.toLowerCase() === roleFilter.toLowerCase()
-        const matchesBuilding = buildingFilter === "all" || (crew.building?.name === buildingFilter)
 
-        return matchesSearch && matchesStatus && matchesRole && matchesBuilding
+        return matchesSearch && matchesStatus && matchesRole
     })
 
     if (loading) {
@@ -64,8 +54,6 @@ export default function CrewManagement() {
     return (
         <div className="space-y-6">
             <CrewHeader
-                timeRange={timeRange}
-                onTimeRangeChange={setTimeRange}
                 onCrewAdded={fetchData}
             />
 
@@ -78,9 +66,6 @@ export default function CrewManagement() {
                 onStatusChange={setStatusFilter}
                 roleFilter={roleFilter}
                 onRoleChange={setRoleFilter}
-                buildingFilter={buildingFilter}
-                onBuildingChange={setBuildingFilter}
-                buildings={buildings}
             />
 
             <CrewTable crews={filteredCrews} onDataChange={fetchData} />

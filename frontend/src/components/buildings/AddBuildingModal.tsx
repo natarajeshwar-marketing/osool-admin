@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Spinner } from "@/components/ui/spinner"
+import { apiClient } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -104,12 +105,11 @@ export function AddBuildingModal({ children, building, onSave }: AddBuildingModa
         }
 
         try {
-            const url = building ? `${import.meta.env.VITE_API_URL}/buildings/${building.id}` : `${import.meta.env.VITE_API_URL}/buildings`
+            const path = building ? `/buildings/${building.id}` : '/buildings'
             const method = building ? 'PATCH' : 'POST'
 
-            const res = await fetch(url, {
+            const res = await apiClient(path, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             })
 

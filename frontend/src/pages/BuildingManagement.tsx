@@ -7,11 +7,11 @@ import { BuildingFilters } from "@/components/buildings/BuildingFilters"
 import { BuildingTable } from "@/components/buildings/BuildingTable"
 import { AddBuildingModal } from "@/components/buildings/AddBuildingModal"
 import { Spinner } from "@/components/ui/spinner"
-import type { Building, Crew } from "@/types"
+import type { Building } from "@/types"
+import { apiClient } from "@/lib/api"
 
 export default function BuildingManagement() {
     const [buildings, setBuildings] = useState<Building[]>([])
-    const [crews, setCrews] = useState<Crew[]>([])
     const [loading, setLoading] = useState(true)
 
     const [searchTerm, setSearchTerm] = useState("")
@@ -20,16 +20,9 @@ export default function BuildingManagement() {
 
     const fetchData = useCallback(async () => {
         try {
-            const [buildingsRes, crewsRes] = await Promise.all([
-                fetch(`${import.meta.env.VITE_API_URL}/buildings`),
-                fetch(`${import.meta.env.VITE_API_URL}/crews`)
-            ])
-
+            const buildingsRes = await apiClient("/buildings")
             const buildingsData = await buildingsRes.json()
-            const crewsData = await crewsRes.json()
-
             setBuildings(buildingsData)
-            setCrews(crewsData)
         } catch (error) {
             console.error("Failed to fetch building data", error)
         } finally {
@@ -87,7 +80,6 @@ export default function BuildingManagement() {
 
             <BuildingTable
                 buildings={filteredBuildings}
-                crews={crews}
                 onBuildingUpdated={fetchData}
             />
         </div>
