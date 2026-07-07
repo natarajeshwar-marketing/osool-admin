@@ -16,10 +16,11 @@ export class AuthController {
   @Post('login')
   async login(@Request() req, @Res({ passthrough: true }) res: Response) {
     const loginResult = await this.authService.login(req.user);
+    const isProd = process.env.NODE_ENV === 'production';
     res.cookie('token', loginResult.access_token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
     return { user: loginResult.user };
@@ -27,10 +28,11 @@ export class AuthController {
 
   @Post('logout')
   async logout(@Res({ passthrough: true }) res: Response) {
+    const isProd = process.env.NODE_ENV === 'production';
     res.cookie('token', '', {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       expires: new Date(0),
     });
     return { message: 'Logged out successfully' };
