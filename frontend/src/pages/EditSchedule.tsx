@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { apiClient } from "@/lib/api"
 import { Input } from "@/components/ui/input"
@@ -138,16 +138,20 @@ export default function EditSchedule() {
 
   // Column 3: Services & Calculations
   const [frequency, setFrequency] = useState<string>("one-time")
-  const [selectedWeekdays, setSelectedWeekdays] = useState<string[]>(["Thu"])
+  const [selectedWeekdays, setSelectedWeekdays] = useState<string[]>([])
   const [startTime, setStartTime] = useState<string>("09:00")
   const [endTime, setEndTime] = useState<string>("09:30")
   
   const [selectedService, setSelectedService] = useState<string>("HVAC Service")
   const [pricingType, setPricingType] = useState<string>("per-service")
   
-  const [discountType, setDiscountType] = useState<"Amount" | "Code">("Amount")
+  const [discountType, setDiscountType] = useState<"Amount" | "Percent">("Amount")
   const [discountValInput, setDiscountValInput] = useState<string>("0")
-  const [appliedDiscount, setAppliedDiscount] = useState<number>(0)
+  const [appliedDiscountVal, setAppliedDiscountVal] = useState<number>(0)
+  const [appliedDiscountType, setAppliedDiscountType] = useState<"Amount" | "Percent">("Amount")
+  const [quantity, setQuantity] = useState<number>(1)
+  const [price, setPrice] = useState<number>(0)
+  const isLoadedRef = useRef(false)
   
   const [taxRate, setTaxRate] = useState<number>(15)
   const [isTaxEditOpen, setIsTaxEditOpen] = useState<boolean>(false)
@@ -176,11 +180,21 @@ export default function EditSchedule() {
 
   // Keep pricingType synced with selectedService
   useEffect(() => {
+    if (!isLoadedRef.current) return
     const s = servicesList.find(item => item.name === selectedService)
     if (s) {
       setPricingType(s.pricingType)
+      setPrice(s.rate)
     }
   }, [selectedService, servicesList])
+
+  // Auto-enable and expand Contract End Date if frequency is monthly
+  useEffect(() => {
+    if (frequency === "monthly") {
+      setHasContractEndDate(true)
+      setIsContractExpanded(true)
+    }
+  }, [frequency])
 
   useEffect(() => {
     if (!editEvent?.id) {
@@ -208,8 +222,13 @@ export default function EditSchedule() {
         setStartTime(scheduleData.startTime)
         setEndTime(scheduleData.endTime)
         setSelectedService(scheduleData.serviceName)
-        setAppliedDiscount(Number(scheduleData.discount || 0))
+        setAppliedDiscountVal(Number(scheduleData.discount || 0))
+        setAppliedDiscountType("Amount")
         setDiscountValInput(String(scheduleData.discount || 0))
+        const initialQty = Number(scheduleData.quantity || 1)
+        const initialBase = Number(scheduleData.baseCost || 0)
+        setQuantity(initialQty)
+        setPrice(initialBase / initialQty)
         // VAT rate calculation - keep default 15
         setConfirmedBooking(scheduleData.confirmedBooking)
         setPaymentMethod(scheduleData.paymentMethod)
@@ -238,7 +257,8 @@ export default function EditSchedule() {
           setZoneQuery(scheduleData.zone || "")
           setApartmentQuery(scheduleData.apartmentNumber || "")
         }
-
+        
+        isLoadedRef.current = true
         setLoading(false)
       })
       .catch(err => {
@@ -342,16 +362,21 @@ export default function EditSchedule() {
     }
   }, [startTime, endTime])
 
-  // Calculations:
-  const basePrice = useMemo(() => {
-    const s = servicesList.find(item => item.name === selectedService)
-    return s ? s.rate : 0
-  }, [servicesList, selectedService])
+  const baseCost = useMemo(() => {
+    return price * quantity
+  }, [price, quantity])
+
+  const appliedDiscount = useMemo(() => {
+    if (appliedDiscountType === "Percent") {
+      return baseCost * (appliedDiscountVal / 100)
+    }
+    return appliedDiscountVal
+  }, [baseCost, appliedDiscountVal, appliedDiscountType])
 
   const untaxedAmount = useMemo(() => {
-    const total = basePrice - appliedDiscount
+    const total = baseCost - appliedDiscount
     return total < 0 ? 0 : total
-  }, [basePrice, appliedDiscount])
+  }, [baseCost, appliedDiscount])
 
   const taxAmount = useMemo(() => {
     return Math.round((untaxedAmount * (taxRate / 100)) * 100) / 100
@@ -368,12 +393,24 @@ export default function EditSchedule() {
       toast.error("Discount value cannot be negative")
       return
     }
-    if (val > basePrice) {
-      toast.error("Discount value cannot exceed base price")
-      return
+    if (discountType === "Percent") {
+      if (val > 100) {
+        toast.error("Discount percentage cannot exceed 100%")
+        return
+      }
+      setAppliedDiscountVal(val)
+      setAppliedDiscountType("Percent")
+      const calculatedDiscount = baseCost * (val / 100)
+      toast.success(`Discount of ${val}% (SAR ${calculatedDiscount.toFixed(2)}) applied successfully!`)
+    } else {
+      if (val > baseCost) {
+        toast.error("Discount value cannot exceed base cost")
+        return
+      }
+      setAppliedDiscountVal(val)
+      setAppliedDiscountType("Amount")
+      toast.success(`Discount of SAR ${val.toFixed(2)} applied successfully!`)
     }
-    setAppliedDiscount(val)
-    toast.success(`Discount of SAR ${val.toFixed(2)} applied successfully!`)
   }
 
   const handleApplyTax = () => {
@@ -397,6 +434,11 @@ export default function EditSchedule() {
 
   const handleDone = () => {
     if (!editEvent) return
+    if (frequency === "monthly" && !hasContractEndDate) {
+      toast.error("Contract end date is required for monthly schedules.")
+      return
+    }
+
     if (selectedCrewIds.length === 0) {
       toast.warning("No crew assigned yet. You can still save this schedule.")
     }
@@ -425,11 +467,13 @@ export default function EditSchedule() {
       crews: selectedCrewIds,
       notes,
       discount: appliedDiscount,
-      baseCost: basePrice,
+      baseCost: baseCost,
+      quantity,
       vat: taxAmount,
       totalCost: totalAmount,
       confirmedBooking,
       paymentMethod,
+      contractEndDate: hasContractEndDate ? contractEndDate : undefined,
     }
 
     console.log("Updating schedule payload:", payload)
@@ -704,77 +748,91 @@ export default function EditSchedule() {
               </div>
             )}
 
-            {/* Recurrence Dropdown */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-gray-400 uppercase">Frequency</label>
-              <Select value={frequency} onValueChange={setFrequency}>
-                <SelectTrigger className="w-full h-9 text-xs">
-                  <SelectValue placeholder="Select Frequency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="one-time" className="text-xs">One Time</SelectItem>
-                  <SelectItem value="daily" className="text-xs">Daily</SelectItem>
-                  <SelectItem value="weekly" className="text-xs">Weekly</SelectItem>
-                  <SelectItem value="monthly" className="text-xs">Monthly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Days buttons checklist */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold text-gray-400 uppercase block">Select repeat days</label>
-              <div className="flex flex-wrap gap-1">
-                {["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"].map((day) => {
-                  const isSelected = selectedWeekdays.includes(day)
+            {/* Recurrence Selector */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block">Frequency</label>
+              <div className="grid grid-cols-4 gap-1.5 bg-gray-50 dark:bg-gray-900/60 p-1.5 rounded-xl border border-gray-150 dark:border-gray-855">
+                {[
+                  { value: "one-time", label: "One Time" },
+                  { value: "daily", label: "Daily" },
+                  { value: "weekly", label: "Weekly" },
+                  { value: "monthly", label: "Monthly" }
+                ].map((f) => {
+                  const isActive = frequency === f.value
                   return (
                     <button
-                      key={day}
+                      key={f.value}
                       type="button"
-                      onClick={() => handleWeekdayToggle(day)}
-                      className={`h-7 px-2.5 text-xs font-medium rounded-md transition-all ${
-                        isSelected
-                          ? "bg-[#ef801f] text-white"
-                          : "bg-gray-50 dark:bg-gray-900 text-gray-500 hover:bg-gray-100"
+                      onClick={() => setFrequency(f.value)}
+                      className={`py-2 text-[11px] font-bold rounded-lg transition-all duration-200 ${
+                        isActive
+                          ? "bg-[#ef801f] text-white shadow-sm transform scale-[1.02]"
+                          : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80"
                       }`}
                     >
-                      {day}
+                      {f.label}
                     </button>
                   )
                 })}
               </div>
             </div>
 
-            {/* Time Picker and Duration */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-gray-400 uppercase">Start Time</label>
-                <div className="relative">
-                  <Clock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
-                  <Input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="pl-8 h-9 text-xs"
-                  />
+            {/* Days buttons checklist - visible when frequency is weekly or monthly */}
+            {(frequency === "weekly" || frequency === "monthly") && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                <label className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider block">Select repeat days</label>
+                <div className="flex flex-wrap gap-1.5 bg-gray-50 dark:bg-gray-900/60 p-2 rounded-xl border border-gray-150 dark:border-gray-855">
+                  {["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"].map((day) => {
+                    const isSelected = selectedWeekdays.includes(day)
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => handleWeekdayToggle(day)}
+                        className={`flex-1 min-w-[42px] h-9 text-xs font-bold rounded-lg transition-all duration-150 ${
+                          isSelected
+                            ? "bg-[#ef801f] text-white shadow-xs"
+                            : "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-gray-400 uppercase">End Time</label>
-                <div className="relative">
-                  <Clock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
-                  <Input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="pl-8 h-9 text-xs"
-                  />
-                </div>
-              </div>
-            </div>
+            )}
 
-            <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 p-2.5 rounded-lg text-xs">
-              <span className="text-gray-400">Duration:</span>
-              <span className="font-semibold text-[#ef801f]">{durationText}</span>
+            {/* Time Picker and Duration */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-900/60 p-4 rounded-xl border border-gray-150 dark:border-gray-855">
+              <div className="space-y-1.5 text-left">
+                <label className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5 text-[#ef801f]" /> Start Time
+                </label>
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="h-10 text-xs font-semibold focus-visible:ring-[#ef801f] bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"
+                />
+              </div>
+              <div className="space-y-1.5 text-left">
+                <label className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5 text-red-500" /> End Time
+                </label>
+                <Input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="h-10 text-xs font-semibold focus-visible:ring-[#ef801f] bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"
+                />
+              </div>
+              <div className="md:col-span-2 flex justify-between items-center bg-[#ef801f]/5 dark:bg-[#ef801f]/10 border border-[#ef801f]/10 p-3 rounded-lg text-xs">
+                <span className="text-gray-500 dark:text-gray-400 font-medium">Estimated Duration:</span>
+                <span className="font-bold text-[#ef801f] bg-white dark:bg-gray-950 px-2.5 py-1 rounded-md border border-[#ef801f]/20 shadow-xs">
+                  {durationText}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -812,6 +870,17 @@ export default function EditSchedule() {
                     <SelectItem value="hourly" className="text-xs">Hourly Billing</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-gray-400 uppercase">Quantity</label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="h-9 text-xs"
+                />
               </div>
             </div>
           </div>
@@ -948,24 +1017,28 @@ export default function EditSchedule() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setDiscountType("Code")}
+                  onClick={() => setDiscountType("Percent")}
                   className={`px-3 py-1 text-xs font-medium transition-all ${
-                    discountType === "Code" 
+                    discountType === "Percent" 
                       ? "bg-[#ef801f] text-white" 
                       : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
-                  Code
+                  (%)
                 </button>
               </div>
 
               <div className="relative flex-1 flex">
-                <span className="absolute left-2.5 top-2.5 text-xs text-gray-400 font-semibold">SAR</span>
+                <span className="absolute left-2.5 top-2.5 text-xs text-gray-400 font-semibold">
+                  {discountType === "Percent" ? "%" : "SAR"}
+                </span>
                 <Input
                   type="number"
                   value={discountValInput}
                   onChange={(e) => setDiscountValInput(e.target.value)}
-                  className="pl-10 pr-2 h-9 text-xs rounded-r-none border-r-0"
+                  className={`pr-2 h-9 text-xs rounded-r-none border-r-0 no-spinner ${
+                    discountType === "Percent" ? "pl-7" : "pl-10"
+                  }`}
                   placeholder="0"
                 />
                 <Button 
@@ -980,9 +1053,27 @@ export default function EditSchedule() {
 
           {/* Subtotal Calculation details */}
           <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl space-y-3 text-xs border border-gray-100 dark:border-gray-900">
+            <div className="flex justify-between items-center gap-2">
+              <span className="text-gray-400">Price:</span>
+              <div className="relative flex items-center w-28">
+                <span className="absolute left-1.5 text-[10px] text-gray-400 font-semibold">SAR</span>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={price || ""}
+                  onChange={(e) => setPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                  className="pl-8 pr-1.5 h-7 text-xs text-right font-medium w-full focus-visible:ring-[#ef801f] no-spinner"
+                />
+              </div>
+            </div>
             <div className="flex justify-between items-center">
+              <span className="text-gray-400">Quantity:</span>
+              <span className="font-medium text-gray-950 dark:text-gray-50">{quantity}</span>
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t border-dashed border-gray-200 dark:border-gray-800">
               <span className="text-gray-400">Base Cost:</span>
-              <span className="font-medium text-gray-950 dark:text-gray-50">SAR {basePrice.toFixed(2)}</span>
+              <span className="font-medium text-gray-950 dark:text-gray-50">SAR {baseCost.toFixed(2)}</span>
             </div>
             {appliedDiscount > 0 && (
               <div className="flex justify-between items-center text-red-500">

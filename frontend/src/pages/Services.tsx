@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { apiClient } from "@/lib/api"
+import { useAuth } from "@/context/AuthContext"
+import { UserRole } from "@/types"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -44,6 +46,9 @@ interface ServiceItem {
 }
 
 export default function Services() {
+    const { user } = useAuth()
+    const isViewer = user?.role === UserRole.VIEWER
+
     const [services, setServices] = useState<ServiceItem[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -234,11 +239,13 @@ export default function Services() {
                     <h2 className="text-2xl font-bold tracking-tight text-[#011f5f]">Service Registry</h2>
                     <p className="text-muted-foreground">Manage core services, pricing catalog, and operational rates.</p>
                 </div>
-                <div className="flex items-center gap-4">
-                    <Button onClick={handleOpenCreate} className="bg-[#011f5f] hover:bg-[#022a80] text-white">
-                        <Plus className="mr-2 h-4 w-4" /> Add New Service
-                    </Button>
-                </div>
+                {!isViewer && (
+                    <div className="flex items-center gap-4">
+                        <Button onClick={handleOpenCreate} className="bg-[#011f5f] hover:bg-[#022a80] text-white">
+                            <Plus className="mr-2 h-4 w-4" /> Add New Service
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {/* Metrics cards */}
@@ -299,13 +306,13 @@ export default function Services() {
                             <TableHead>Pricing Model</TableHead>
                             <TableHead>Rate (SAR)</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead className="text-right pr-6">Actions</TableHead>
+                            {!isViewer && <TableHead className="text-right pr-6">Actions</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredServices.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                                <TableCell colSpan={isViewer ? 5 : 6} className="text-center py-10 text-muted-foreground">
                                     No services found matching the criteria.
                                 </TableCell>
                             </TableRow>
@@ -331,7 +338,7 @@ export default function Services() {
                                     <TableCell className="font-semibold text-gray-900">
                                         {service.rate.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">SAR</span>
                                     </TableCell>
-                                    <TableCell>
+                                     <TableCell>
                                         <div className="flex items-center gap-1.5">
                                             <span className={`h-2 w-2 rounded-full ${
                                                 service.status === "Active" ? "bg-green-500" : "bg-red-400"
@@ -343,26 +350,28 @@ export default function Services() {
                                             </span>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="text-right pr-6">
-                                        <div className="flex justify-end gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleOpenEdit(service)}
-                                                className="hover:bg-blue-50 hover:text-blue-600 h-8 w-8 rounded-full"
-                                            >
-                                                <Edit2 className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleOpenDelete(service)}
-                                                className="hover:bg-red-50 hover:text-red-500 h-8 w-8 rounded-full"
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
+                                    {!isViewer && (
+                                        <TableCell className="text-right pr-6">
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleOpenEdit(service)}
+                                                    className="hover:bg-blue-50 hover:text-blue-600 h-8 w-8 rounded-full"
+                                                >
+                                                    <Edit2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleOpenDelete(service)}
+                                                    className="hover:bg-red-50 hover:text-red-500 h-8 w-8 rounded-full"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             ))
                         )}

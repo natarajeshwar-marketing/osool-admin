@@ -10,8 +10,13 @@ import { type DateRange } from "react-day-picker"
 import { useNavigate } from "react-router-dom"
 import { apiClient } from "@/lib/api"
 import type { Schedule } from "@/types"
+import { useAuth } from "@/context/AuthContext"
+import { UserRole } from "@/types"
 
 export default function JobManagement() {
+    const { user } = useAuth()
+    const isViewer = user?.role === UserRole.VIEWER
+
     const navigate = useNavigate()
     const [schedules, setSchedules] = useState<Schedule[]>([])
     const [loading, setLoading] = useState(true)
@@ -82,11 +87,13 @@ export default function JobManagement() {
                     <h2 className="text-2xl font-bold tracking-tight">Jobs Management</h2>
                     <p className="text-muted-foreground">Manage scheduled jobs and task assignments.</p>
                 </div>
-                <div className="flex items-center gap-4">
-                    <Button onClick={() => navigate("/schedules/add")} className="bg-[#011f5f] hover:bg-[#022a80]">
-                        <Plus className="mr-2 h-4 w-4" /> Add New Job
-                    </Button>
-                </div>
+                {!isViewer && (
+                    <div className="flex items-center gap-4">
+                        <Button onClick={() => navigate("/schedules/add")} className="bg-[#011f5f] hover:bg-[#022a80]">
+                            <Plus className="mr-2 h-4 w-4" /> Add New Job
+                        </Button>
+                    </div>
+                )}
             </div>
 
             <JobFilters

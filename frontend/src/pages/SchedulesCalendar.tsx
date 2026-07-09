@@ -2,11 +2,17 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/api';
 import { FullCalendar, type CalendarEvent } from '@/components/calendar/FullCalendar';
-import { MultiProgressBar } from '@/components/shared/MultiProgressBar';
+import { MultiProgressBar, type ProgressSegment } from '@/components/shared/MultiProgressBar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
+import { UserRole, type Schedule } from '@/types';
+
+interface MappedCalendarEvent extends CalendarEvent {
+  category: string;
+}
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,35 +24,140 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+// Consistent category color mapping. Keep these Tailwind classes so they are not purged:
+// bg-blue-500 bg-emerald-500 bg-orange-500 bg-purple-500 bg-cyan-500 bg-pink-500 bg-amber-500 bg-indigo-500 bg-teal-500 bg-slate-500
+const categoryColors: Record<string, string> = {
+  'general maintenance': 'bg-blue-500',
+  'maintenance': 'bg-blue-500',
+  'cleaning': 'bg-emerald-500',
+  'pest control': 'bg-orange-500',
+  'inspection': 'bg-purple-500',
+  'car wash': 'bg-cyan-500',
+};
+
+const getCategoryColor = (category: string): string => {
+  const norm = category.trim().toLowerCase();
+  if (categoryColors[norm]) return categoryColors[norm];
+
+  // Pattern matching fallbacks for custom categories or variants
+  if (norm.includes('cleaning')) return 'bg-emerald-500';
+  if (norm.includes('pest')) return 'bg-orange-500';
+  if (norm.includes('repair') || norm.includes('maintenance') || norm.includes('hvac')) return 'bg-blue-500';
+  if (norm.includes('wash') || norm.includes('window')) return 'bg-cyan-500';
+  if (norm.includes('inspect')) return 'bg-purple-500';
+
+  // Deterministic fallback for custom categories using a simple string hash
+  const fallbacks = [
+    'bg-pink-500',
+    'bg-indigo-500',
+    'bg-amber-500',
+    'bg-teal-500',
+    'bg-slate-500'
+  ];
+  let hash = 0;
+  for (let i = 0; i < norm.length; i++) {
+    hash = norm.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % fallbacks.length;
+  return fallbacks[index];
+};
+
+const getNormalizedCategory = (item: Schedule): string => {
+  let cat = item.serviceCategory;
+  if (!cat && item.serviceName) {
+    const name = item.serviceName.toLowerCase();
+    if (name.includes("cleaning")) cat = "Cleaning";
+    else if (name.includes("pest")) cat = "Pest Control";
+    else if (name.includes("repair") || name.includes("electrical") || name.includes("plumbing") || name.includes("maintenance") || name.includes("hvac")) cat = "Maintenance";
+    else if (name.includes("wash") || name.includes("window")) cat = "Car Wash";
+    else cat = "Other";
+  }
+  if (!cat) cat = "Other";
+
+  const norm = cat.trim().toLowerCase();
+  if (norm === 'maintenance') return 'General Maintenance';
+  if (norm === 'pest control' || norm === 'pest') return 'Pest Control';
+  if (norm === 'cleaning') return 'Cleaning';
+  if (norm === 'inspection') return 'Inspection';
+  if (norm === 'car wash') return 'Car Wash';
+
+  // Capitalize custom categories nicely
+  return cat
+    .split(' ')
+    .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
 export default function SchedulesCalendar() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isViewer = user?.role === UserRole.VIEWER;
 
 
 
-  const [events, setEvents] = useState<CalendarEvent[]>([])
+  const [events, setEvents] = useState<MappedCalendarEvent[]>([])
+  const [serviceStats, setServiceStats] = useState<ProgressSegment[]>([])
 
   const fetchEvents = () => {
     apiClient("/schedules")
       .then(res => res.json())
-      .then((data: any[]) => {
-        const mapped = data.map((item: any) => {
-          let colorClass = "bg-blue-500"
-          const name = item.serviceName.toLowerCase()
-          if (name.includes("cleaning")) colorClass = "bg-emerald-500"
-          else if (name.includes("pest")) colorClass = "bg-orange-500"
-          else if (name.includes("repair") || name.includes("electrical") || name.includes("plumbing")) colorClass = "bg-purple-500"
-          else if (name.includes("wash") || name.includes("window")) colorClass = "bg-cyan-500"
-
-          const title = item.buildingNumber ? `${item.buildingNumber} - ${item.serviceName}` : item.serviceName
+      .then((data: Schedule[]) => {
+        const mapped = data.map((item: Schedule): MappedCalendarEvent => {
+          const category = getNormalizedCategory(item);
+          const colorClass = getCategoryColor(category);
+          const title = item.buildingNumber ? `${item.buildingNumber} - ${item.serviceName}` : item.serviceName;
 
           return {
             id: item.id,
             title: title,
             date: new Date(item.year, item.month - 1, item.date),
-            color: colorClass
+            color: colorClass,
+            category: category
+          };
+        });
+        setEvents(mapped);
+
+        const total = mapped.length;
+        if (total === 0) {
+          const defaults: ProgressSegment[] = [
+            { id: 'maintenance', label: 'General Maintenance', color: 'bg-blue-500', percentage: 0 },
+            { id: 'cleaning', label: 'Cleaning', color: 'bg-emerald-500', percentage: 0 },
+            { id: 'pest-control', label: 'Pest Control', color: 'bg-orange-500', percentage: 0 },
+            { id: 'inspection', label: 'Inspection', color: 'bg-purple-500', percentage: 0 },
+          ];
+          setServiceStats(defaults);
+          return;
+        }
+
+        const counts: Record<string, number> = {};
+        mapped.forEach((evt: MappedCalendarEvent) => {
+          counts[evt.category] = (counts[evt.category] || 0) + 1;
+        });
+
+        // Ensure default categories are represented in the breakdown, even if 0%
+        const defaultCats = ['General Maintenance', 'Cleaning', 'Pest Control', 'Inspection'];
+        defaultCats.forEach(cat => {
+          if (!counts[cat]) {
+            counts[cat] = 0;
           }
-        })
-        setEvents(mapped)
+        });
+
+        // Map to ProgressSegment format
+        const stats: ProgressSegment[] = Object.entries(counts).map(([category, count]) => {
+          const percentage = (count / total) * 100;
+          const formattedPercentage = parseFloat(percentage.toFixed(1));
+          return {
+            id: category.toLowerCase().replace(/\s+/g, '-'),
+            label: category,
+            color: getCategoryColor(category),
+            percentage: formattedPercentage
+          };
+        });
+
+        // Sort: first by percentage descending, then alphabetically by label to keep it stable
+        stats.sort((a, b) => b.percentage - a.percentage || a.label.localeCompare(b.label));
+
+        setServiceStats(stats);
       })
       .catch(err => {
         console.error("Failed to fetch events from backend", err)
@@ -122,13 +233,7 @@ export default function SchedulesCalendar() {
     setIsConfirmOpen(false);
   };
 
-  // Dummy breakdown of service bookings
-  const serviceStats = [
-    { id: 'maintenance', label: 'General Maintenance', color: 'bg-blue-500', percentage: 40 },
-    { id: 'cleaning', label: 'Cleaning', color: 'bg-emerald-500', percentage: 10 },
-    { id: 'pest', label: 'Pest Control', color: 'bg-orange-500', percentage: 1 },
-    { id: 'inspection', label: 'Inspection', color: 'bg-purple-500', percentage: 10 },
-  ];
+
 
   const handleDateClick = (date: Date) => {
     toast(`Adding event for ${date.toDateString()}`, {
@@ -161,24 +266,27 @@ export default function SchedulesCalendar() {
         {/* Progress Bar showing service booking percentage */}
         <MultiProgressBar segments={serviceStats} />
 
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Button className="bg-[#001e60] hover:bg-[#001e60]/90" onClick={() => navigate('/schedules/add')}>
-            <Plus className="mr-2 h-4 w-4" /> Add Schedule
-          </Button>
-        </div>
+         {!isViewer && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button className="bg-[#001e60] hover:bg-[#001e60]/90" onClick={() => navigate('/schedules/add')}>
+              <Plus className="mr-2 h-4 w-4" /> Add Schedule
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 flex flex-col min-h-0">
         <Card className="shadow-md border-slate-200 flex-1 flex flex-col">
 
           <CardContent className="p-6 flex-1 flex flex-col min-h-0">
-            <FullCalendar
+             <FullCalendar
               events={events}
               onDateClick={handleDateClick}
               onEventClick={handleEventClick}
               onEventDoubleClick={handleEventDoubleClick}
               onEventDrop={handleEventDrop}
               className="flex-1"
+              readonly={isViewer}
             />
           </CardContent>
         </Card>
@@ -186,18 +294,13 @@ export default function SchedulesCalendar() {
 
       {/* Legend section */}
       <div className="flex flex-wrap gap-4 items-center justify-center pt-4">
-        <div className="flex items-center gap-2 text-sm text-slate-600">
-          <div className="w-3 h-3 rounded-full bg-blue-500"></div> General Maintenance
-        </div>
-        <div className="flex items-center gap-2 text-sm text-slate-600">
-          <div className="w-3 h-3 rounded-full bg-emerald-500"></div> Cleaning
-        </div>
-        <div className="flex items-center gap-2 text-sm text-slate-600">
-          <div className="w-3 h-3 rounded-full bg-orange-500"></div> Pest Control
-        </div>
-        <div className="flex items-center gap-2 text-sm text-slate-600">
-          <div className="w-3 h-3 rounded-full bg-purple-500"></div> Inspection
-        </div>
+        {serviceStats.map(stat => (
+          <div key={stat.id} className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100 shadow-sm transition-all duration-300 hover:shadow">
+            <div className={`w-3 h-3 rounded-full ${stat.color}`}></div>
+            <span className="font-medium text-slate-700">{stat.label}</span>
+            <span className="text-slate-400 font-semibold">{stat.percentage}%</span>
+          </div>
+        ))}
       </div>
 
       {/* Confirmation Dialog */}

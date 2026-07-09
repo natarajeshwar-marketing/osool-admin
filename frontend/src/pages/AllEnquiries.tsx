@@ -39,11 +39,15 @@ import { Spinner } from "@/components/ui/spinner"
 import { toast } from "sonner"
 import { Search, Plus, Trash2, Eye, Mail, Phone, Calendar, Info, MessageSquare } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { useAuth } from "@/context/AuthContext"
 import type { Enquiry } from "@/types"
+import { UserRole } from "@/types"
 import { apiClient } from "@/lib/api"
 
 export default function AllEnquiries() {
     const navigate = useNavigate()
+    const { user } = useAuth()
+    const isViewer = user?.role === UserRole.VIEWER
     const [enquiries, setEnquiries] = useState<Enquiry[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -186,12 +190,14 @@ export default function AllEnquiries() {
                     <h2 className="text-2xl font-bold tracking-tight">Enquiries</h2>
                     <p className="text-muted-foreground">Manage client enquiries and work request tickets.</p>
                 </div>
-                <Button
-                    onClick={() => navigate("/enquiries/add")}
-                    className="bg-[#011f5f] hover:bg-[#022a80] text-white"
-                >
-                    <Plus className="mr-2 h-4 w-4" /> Add Enquiry
-                </Button>
+                {!isViewer && (
+                    <Button
+                        onClick={() => navigate("/enquiries/add")}
+                        className="bg-[#011f5f] hover:bg-[#022a80] text-white"
+                    >
+                        <Plus className="mr-2 h-4 w-4" /> Add Enquiry
+                    </Button>
+                )}
             </div>
 
             {/* Filters */}
@@ -288,7 +294,7 @@ export default function AllEnquiries() {
                                     <TableCell>{getStatusBadge(enquiry.status)}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                                            <Button
+                                             <Button
                                                 variant="ghost"
                                                 size="icon"
                                                 className="h-8 w-8 text-[#011f5f] hover:bg-[#011f5f]/10"
@@ -296,14 +302,16 @@ export default function AllEnquiries() {
                                             >
                                                 <Eye className="h-4 w-4" />
                                             </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-600"
-                                                onClick={(e) => handleOpenDelete(enquiry, e)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            {!isViewer && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-600"
+                                                    onClick={(e) => handleOpenDelete(enquiry, e)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            )}
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -384,30 +392,32 @@ export default function AllEnquiries() {
                                 </div>
                             </div>
 
-                            {/* Status controls */}
-                            <div className="flex items-center justify-between border-t pt-4">
-                                <div className="space-y-1">
-                                    <Label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Update Status</Label>
-                                    <div className="w-48 pt-1">
-                                        <Select value={statusToUpdate} onValueChange={setStatusToUpdate}>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Pending">Pending</SelectItem>
-                                                <SelectItem value="Converted">Converted</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                             {/* Status controls */}
+                            {!isViewer && (
+                                <div className="flex items-center justify-between border-t pt-4">
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Update Status</Label>
+                                        <div className="w-48 pt-1">
+                                            <Select value={statusToUpdate} onValueChange={setStatusToUpdate}>
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Pending">Pending</SelectItem>
+                                                    <SelectItem value="Converted">Converted</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
+                                    <Button
+                                        onClick={handleUpdateStatus}
+                                        className="bg-[#011f5f] hover:bg-[#022a80] text-white self-end"
+                                        disabled={updatingStatus}
+                                    >
+                                        {updatingStatus ? "Saving..." : "Save Status"}
+                                    </Button>
                                 </div>
-                                <Button
-                                    onClick={handleUpdateStatus}
-                                    className="bg-[#011f5f] hover:bg-[#022a80] text-white self-end"
-                                    disabled={updatingStatus}
-                                >
-                                    {updatingStatus ? "Saving..." : "Save Status"}
-                                </Button>
-                            </div>
+                            )}
                         </div>
                     )}
                 </DialogContent>

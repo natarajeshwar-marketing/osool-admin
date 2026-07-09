@@ -9,8 +9,13 @@ import { AddBuildingModal } from "@/components/buildings/AddBuildingModal"
 import { Spinner } from "@/components/ui/spinner"
 import type { Building } from "@/types"
 import { apiClient } from "@/lib/api"
+import { useAuth } from "@/context/AuthContext"
+import { UserRole } from "@/types"
 
 export default function BuildingManagement() {
+    const { user } = useAuth()
+    const isViewer = user?.role === UserRole.VIEWER
+
     const [buildings, setBuildings] = useState<Building[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -58,13 +63,15 @@ export default function BuildingManagement() {
                     <h2 className="text-2xl font-bold tracking-tight">Building Management</h2>
                     <p className="text-muted-foreground">Manage operational buildings and their status.</p>
                 </div>
-                <div className="flex items-center gap-4">
-                    <AddBuildingModal onSave={fetchData}>
-                        <Button className="bg-[#011f5f] hover:bg-[#022a80]">
-                            <Plus className="mr-2 h-4 w-4" /> Add New Building
-                        </Button>
-                    </AddBuildingModal>
-                </div>
+                {!isViewer && (
+                    <div className="flex items-center gap-4">
+                        <AddBuildingModal onSave={fetchData}>
+                            <Button className="bg-[#011f5f] hover:bg-[#022a80]">
+                                <Plus className="mr-2 h-4 w-4" /> Add New Building
+                            </Button>
+                        </AddBuildingModal>
+                    </div>
+                )}
             </div>
 
             {/* <BuildingStats buildings={buildings} crews={crews} /> */}

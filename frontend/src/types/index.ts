@@ -50,6 +50,7 @@ export const UserRole = {
     SUPER_ADMIN: 'Super Admin',
     ADMIN: 'Admin',
     EDITOR: 'Editor',
+    VIEWER: 'Viewer',
 } as const;
 
 export type UserRole = typeof UserRole[keyof typeof UserRole];
@@ -106,6 +107,10 @@ export interface Schedule {
     totalCost?: number;
     confirmedBooking?: boolean;
     paymentMethod?: string;
+    quantity?: number;
+    groupId?: string;
+    contractEndDate?: string;
+    serviceCategory?: string;
 }
 
 export interface Enquiry {

@@ -12,6 +12,8 @@ import { MoreHorizontal } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import type { Crew, CrewStatus } from "@/types"
 import { apiClient } from "@/lib/api"
+import { useAuth } from "@/context/AuthContext"
+import { UserRole } from "@/types"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -37,6 +39,9 @@ interface CrewTableProps {
 }
 
 export function CrewTable({ crews, onDataChange }: CrewTableProps) {
+    const { user } = useAuth()
+    const isViewer = user?.role === UserRole.VIEWER
+
     const getStatusColor = (status: CrewStatus) => {
         switch (status) {
             case "Active": return "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
@@ -86,9 +91,9 @@ export function CrewTable({ crews, onDataChange }: CrewTableProps) {
                             <TableHead className="py-4 px-4 bg-muted/50">JOINING DATE</TableHead>
                             <TableHead className="text-center py-4 px-4 bg-muted/50">ROLE</TableHead>
                             <TableHead className="text-center py-4 px-4 bg-muted/50">SCHEDULED HOURS</TableHead>
-                            <TableHead className="py-4 px-4 bg-muted/50">STATUS</TableHead>
+                             <TableHead className="py-4 px-4 bg-muted/50">STATUS</TableHead>
                             <TableHead className="text-right py-4 px-4 bg-muted/50">REVENUE</TableHead>
-                            <TableHead className="w-[50px] py-4 px-4 bg-muted/50"></TableHead>
+                            {!isViewer && <TableHead className="w-[50px] py-4 px-4 bg-muted/50"></TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -109,7 +114,7 @@ export function CrewTable({ crews, onDataChange }: CrewTableProps) {
                                         {crew.status}
                                     </Badge>
                                 </TableCell>
-                                <TableCell className="text-right py-4 px-4 font-semibold text-green-600">
+                                 <TableCell className="text-right py-4 px-4 font-semibold text-green-600">
                                     {crew.revenue > 0 ? (
                                         <span>
                                             SAR {Number(crew.revenue).toLocaleString()}
@@ -118,43 +123,45 @@ export function CrewTable({ crews, onDataChange }: CrewTableProps) {
                                         <span className="text-muted-foreground">SAR 0</span>
                                     )}
                                 </TableCell>
-                                <TableCell className="py-4 px-4">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                                <span className="sr-only">Open menu</span>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <AddCrewModal crew={crew} onSave={onDataChange}>
-                                                <DropdownMenuItem onSelect={(e: Event) => e.preventDefault()}>
-                                                    Edit
-                                                </DropdownMenuItem>
-                                            </AddCrewModal>
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <DropdownMenuItem onSelect={(e: Event) => e.preventDefault()} className="text-red-600 focus:text-red-600">
-                                                        Delete
+                                {!isViewer && (
+                                    <TableCell className="py-4 px-4">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                    <span className="sr-only">Open menu</span>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <AddCrewModal crew={crew} onSave={onDataChange}>
+                                                    <DropdownMenuItem onSelect={(e: Event) => e.preventDefault()}>
+                                                        Edit
                                                     </DropdownMenuItem>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            This action cannot be undone. This will permanently delete the crew
-                                                            and remove their data from the servers.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDelete(crew.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
+                                                </AddCrewModal>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <DropdownMenuItem onSelect={(e: Event) => e.preventDefault()} className="text-red-600 focus:text-red-600">
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                This action cannot be undone. This will permanently delete the crew
+                                                                and remove their data from the servers.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDelete(crew.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                )}
                             </TableRow>
                         ))}
                     </TableBody>

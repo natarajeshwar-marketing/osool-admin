@@ -62,6 +62,24 @@ async function bootstrap() {
     );
   }
 
+  // Seed Viewer user
+  const viewerEmail = 'viewer@example.com';
+  const viewerPassword = 'password123';
+  const existingViewer = await usersService.findOne(viewerEmail);
+  if (existingViewer) {
+    console.log('Viewer user already exists.');
+  } else {
+    await usersService.create({
+      email: viewerEmail,
+      password: viewerPassword,
+      role: UserRole.VIEWER,
+      name: 'Viewer User',
+    });
+    console.log(
+      `Viewer user created with email: ${viewerEmail} and password: ${viewerPassword}`,
+    );
+  }
+
   await app.close();
 }
 bootstrap();

@@ -7,6 +7,17 @@ import { Crew } from '../entities/crew.entity';
 import { Service } from '../entities/service.entity';
 import { CreateScheduleDto } from './dto/create-schedule.dto';
 import { UpdateScheduleDto } from './dto/update-schedule.dto';
+import * as crypto from 'crypto';
+
+const WEEKDAYS_MAP: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
 
 @Injectable()
 export class SchedulesService {
@@ -22,7 +33,7 @@ export class SchedulesService {
   ) {}
 
   async create(createScheduleDto: CreateScheduleDto): Promise<Schedule> {
-    const { buildingId, crews: crewIds, ...scheduleData } = createScheduleDto;
+    const { buildingId, crews: crewIds, contractEndDate: contractEndStr, ...scheduleData } = createScheduleDto;
 
     let building: Building | null = null;
     if (buildingId) {
@@ -49,14 +60,93 @@ export class SchedulesService {
       }
     }
 
-    const schedule = this.scheduleRepository.create({
-      ...scheduleData,
-      serviceCategory,
-      building,
-      crews,
-    });
+    const startDate = new Date(scheduleData.year, scheduleData.month - 1, scheduleData.date);
 
-    return this.scheduleRepository.save(schedule);
+    if (scheduleData.frequency && scheduleData.frequency !== 'one-time') {
+      const groupId = crypto.randomUUID();
+      let endDate = new Date(startDate);
+      if (contractEndStr) {
+        try {
+          const parts = contractEndStr.split('/');
+          endDate = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+        } catch {
+          endDate.setMonth(endDate.getMonth() + 3);
+        }
+      } else {
+        endDate.setMonth(endDate.getMonth() + 3);
+      }
+
+      const dates: Date[] = [];
+      let current = new Date(startDate);
+
+      if (scheduleData.frequency === 'daily') {
+        while (current <= endDate) {
+          dates.push(new Date(current));
+          current.setDate(current.getDate() + 1);
+        }
+      } else if (scheduleData.frequency === 'weekly' && scheduleData.repeatDays && scheduleData.repeatDays.length > 0) {
+        const targetDays = new Set(scheduleData.repeatDays.map(d => WEEKDAYS_MAP[d]).filter(d => d !== undefined));
+        if (targetDays.size === 0) {
+          targetDays.add(startDate.getDay());
+        }
+        while (current <= endDate) {
+          if (targetDays.has(current.getDay())) {
+            dates.push(new Date(current));
+          }
+          current.setDate(current.getDate() + 1);
+        }
+      } else if (scheduleData.frequency === 'monthly') {
+        if (scheduleData.repeatDays && scheduleData.repeatDays.length > 0) {
+          const targetDays = new Set(scheduleData.repeatDays.map(d => WEEKDAYS_MAP[d]).filter(d => d !== undefined));
+          while (current <= endDate) {
+            if (targetDays.has(current.getDay())) {
+              dates.push(new Date(current));
+            }
+            current.setDate(current.getDate() + 1);
+          }
+        } else {
+          const targetDayOfMonth = startDate.getDate();
+          while (current <= endDate) {
+            if (current.getDate() === targetDayOfMonth) {
+              dates.push(new Date(current));
+            }
+            current.setDate(current.getDate() + 1);
+          }
+        }
+      } else {
+        dates.push(new Date(startDate));
+      }
+
+      if (dates.length === 0) {
+        dates.push(new Date(startDate));
+      }
+
+      const schedulesToSave: Schedule[] = [];
+      for (const d of dates) {
+        const schedule = this.scheduleRepository.create({
+          ...scheduleData,
+          date: d.getDate(),
+          month: d.getMonth() + 1,
+          year: d.getFullYear(),
+          groupId,
+          serviceCategory,
+          building,
+          crews,
+        });
+        schedulesToSave.push(schedule);
+      }
+
+      const savedSchedules = await this.scheduleRepository.save(schedulesToSave);
+      return savedSchedules[0];
+    } else {
+      const schedule = this.scheduleRepository.create({
+        ...scheduleData,
+        serviceCategory,
+        building,
+        crews,
+      });
+      return this.scheduleRepository.save(schedule);
+    }
   }
 
   async findAll(
@@ -168,13 +258,52 @@ export class SchedulesService {
       scheduleData.serviceCategory = serviceCategory;
     }
 
-    Object.assign(schedule, scheduleData);
-    return this.scheduleRepository.save(schedule);
+    if (schedule.groupId) {
+      const currentDate = new Date(schedule.year, schedule.month - 1, schedule.date);
+
+      const upcomingSchedules = await this.scheduleRepository
+        .createQueryBuilder('s')
+        .leftJoinAndSelect('s.building', 'building')
+        .leftJoinAndSelect('s.crews', 'crews')
+        .where('s.groupId = :groupId', { groupId: schedule.groupId })
+        .andWhere('make_date(s.year, s.month, s.date) >= :currentDate', { currentDate })
+        .getMany();
+
+      for (const s of upcomingSchedules) {
+        if (buildingId !== undefined) {
+          s.building = schedule.building;
+        }
+        if (crewIds !== undefined) {
+          s.crews = schedule.crews;
+        }
+        Object.assign(s, scheduleData);
+      }
+
+      await this.scheduleRepository.save(upcomingSchedules);
+      return this.findOne(id);
+    } else {
+      Object.assign(schedule, scheduleData);
+      return this.scheduleRepository.save(schedule);
+    }
   }
 
   async remove(id: string): Promise<{ message: string }> {
     const schedule = await this.findOne(id);
-    await this.scheduleRepository.remove(schedule);
-    return { message: 'Schedule deleted successfully' };
+
+    if (schedule.groupId) {
+      const currentDate = new Date(schedule.year, schedule.month - 1, schedule.date);
+
+      const upcomingSchedules = await this.scheduleRepository
+        .createQueryBuilder('s')
+        .where('s.groupId = :groupId', { groupId: schedule.groupId })
+        .andWhere('make_date(s.year, s.month, s.date) >= :currentDate', { currentDate })
+        .getMany();
+
+      await this.scheduleRepository.remove(upcomingSchedules);
+      return { message: 'Recurring schedule series deleted successfully' };
+    } else {
+      await this.scheduleRepository.remove(schedule);
+      return { message: 'Schedule deleted successfully' };
+    }
   }
 }

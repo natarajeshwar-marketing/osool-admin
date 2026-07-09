@@ -33,6 +33,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
 import { useNavigate } from "react-router-dom"
+import { useAuth } from "@/context/AuthContext"
+import { UserRole } from "@/types"
 
 interface JobTableProps {
     schedules: Schedule[]
@@ -40,6 +42,8 @@ interface JobTableProps {
 }
 
 export function JobTable({ schedules, onJobUpdated }: JobTableProps) {
+    const { user } = useAuth()
+    const isViewer = user?.role === UserRole.VIEWER
     const navigate = useNavigate()
 
     const handleDelete = async (id: string) => {
@@ -71,7 +75,7 @@ export function JobTable({ schedules, onJobUpdated }: JobTableProps) {
                             <TableHead className="py-4 px-4 bg-muted/50">Status</TableHead>
                             <TableHead className="py-4 px-4 bg-muted/50">Amount</TableHead>
                             <TableHead className="py-4 px-4 bg-muted/50">Assigned Crew</TableHead>
-                            <TableHead className="w-[50px] py-4 px-4 bg-muted/50">Action</TableHead>
+                            {!isViewer && <TableHead className="w-[50px] py-4 px-4 bg-muted/50">Action</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -116,7 +120,7 @@ export function JobTable({ schedules, onJobUpdated }: JobTableProps) {
                                 <TableCell className="py-4 px-4 font-semibold text-sm">
                                     SAR {Number(schedule.totalCost || 0).toFixed(2)}
                                 </TableCell>
-                                <TableCell className="py-4 px-4 text-sm">
+                                 <TableCell className="py-4 px-4 text-sm">
                                     {schedule.crews && schedule.crews.length > 0 ? (
                                         <div className="flex flex-col gap-0.5">
                                             {schedule.crews.map((c) => (
@@ -127,45 +131,47 @@ export function JobTable({ schedules, onJobUpdated }: JobTableProps) {
                                         <span className="text-muted-foreground italic">Unassigned</span>
                                     )}
                                 </TableCell>
-                                <TableCell className="py-4 px-4">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                                <span className="sr-only">Open menu</span>
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => navigate('/schedules/edit', { state: { editEvent: { id: schedule.id } } })}>
-                                                Edit
-                                            </DropdownMenuItem>
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600">
-                                                        Delete
-                                                    </DropdownMenuItem>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            This action cannot be undone. This will permanently delete the scheduled job.
-                                                        </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDelete(schedule.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </TableCell>
+                                {!isViewer && (
+                                    <TableCell className="py-4 px-4">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                    <span className="sr-only">Open menu</span>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => navigate('/schedules/edit', { state: { editEvent: { id: schedule.id } } })}>
+                                                    Edit
+                                                </DropdownMenuItem>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600">
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                This action cannot be undone. This will permanently delete the scheduled job.
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDelete(schedule.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                )}
                             </TableRow>
                         ))}
                         {schedules.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={isViewer ? 6 : 7} className="h-24 text-center text-muted-foreground">
                                     No scheduled jobs found.
                                 </TableCell>
                             </TableRow>

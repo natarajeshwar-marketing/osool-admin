@@ -131,6 +131,12 @@ export class Schedule {
   })
   totalCost: number;
 
+  @Column({ type: 'int', default: 1 })
+  quantity: number;
+
+  @Column({ name: 'group_id', nullable: true })
+  groupId: string;
+
   @Column({ type: 'boolean', default: false, name: 'confirmed_booking' })
   confirmedBooking: boolean;
 

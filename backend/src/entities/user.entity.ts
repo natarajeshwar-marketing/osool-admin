@@ -10,6 +10,7 @@ export enum UserRole {
   SUPER_ADMIN = 'Super Admin',
   ADMIN = 'Admin',
   EDITOR = 'Editor',
+  VIEWER = 'Viewer',
 }
 
 @Entity()

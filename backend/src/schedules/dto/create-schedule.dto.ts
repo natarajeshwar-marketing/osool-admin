@@ -116,4 +116,16 @@ export class CreateScheduleDto {
   @IsString()
   @IsOptional()
   paymentMethod?: string;
+
+  @IsNumber()
+  @IsOptional()
+  quantity?: number;
+
+  @IsString()
+  @IsOptional()
+  contractEndDate?: string;
+
+  @IsString()
+  @IsOptional()
+  groupId?: string;
 }

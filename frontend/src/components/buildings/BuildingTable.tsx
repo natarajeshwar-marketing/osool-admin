@@ -12,6 +12,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import type { Building } from "@/types"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/api"
+import { useAuth } from "@/context/AuthContext"
+import { UserRole } from "@/types"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -37,6 +39,9 @@ interface BuildingTableProps {
 }
 
 export function BuildingTable({ buildings, onBuildingUpdated }: BuildingTableProps) {
+    const { user } = useAuth()
+    const isViewer = user?.role === UserRole.VIEWER
+
     const handleDelete = async (id: string) => {
         try {
             await apiClient(`/buildings/${id}`, {
@@ -63,7 +68,7 @@ export function BuildingTable({ buildings, onBuildingUpdated }: BuildingTablePro
                             <TableHead className="py-4 px-4 bg-muted/50">TENANT NAME</TableHead>
                             <TableHead className="py-4 px-4 bg-muted/50">CONTACT NUMBER</TableHead>
                             <TableHead className="py-4 px-4 bg-muted/50">EMAIL ADDRESS</TableHead>
-                            <TableHead className="w-[50px] py-4 px-4 bg-muted/50"></TableHead>
+                            {!isViewer && <TableHead className="w-[50px] py-4 px-4 bg-muted/50"></TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -76,44 +81,46 @@ export function BuildingTable({ buildings, onBuildingUpdated }: BuildingTablePro
                                     <TableCell className="py-4 px-4">{building.apartmentNumber || "-"}</TableCell>
                                     <TableCell className="py-4 px-4">{building.tenantName || "-"}</TableCell>
                                     <TableCell className="py-4 px-4">{building.contactNumber || "-"}</TableCell>
-                                    <TableCell className="py-4 px-4 text-neutral-600 dark:text-neutral-400">{building.emailAddress || "-"}</TableCell>
-                                    <TableCell className="py-4 px-4">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                    <span className="sr-only">Open menu</span>
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <AddBuildingModal building={building} onSave={onBuildingUpdated}>
-                                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                                        Edit
-                                                    </DropdownMenuItem>
-                                                </AddBuildingModal>
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600">
-                                                            Delete
+                                     <TableCell className="py-4 px-4 text-neutral-600 dark:text-neutral-400">{building.emailAddress || "-"}</TableCell>
+                                    {!isViewer && (
+                                        <TableCell className="py-4 px-4">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                        <span className="sr-only">Open menu</span>
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <AddBuildingModal building={building} onSave={onBuildingUpdated}>
+                                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                                            Edit
                                                         </DropdownMenuItem>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                This action cannot be undone. This will permanently delete the building
-                                                                and remove its data from the servers.
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleDelete(building.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
+                                                    </AddBuildingModal>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600">
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    This action cannot be undone. This will permanently delete the building
+                                                                    and remove its data from the servers.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDelete(building.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             )
                         })}

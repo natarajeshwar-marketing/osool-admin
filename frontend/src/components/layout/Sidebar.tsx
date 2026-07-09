@@ -42,7 +42,7 @@ export const menuItems: MenuItem[] = [
         label: "Enquiries",
         icon: MessageSquare,
         subItems: [
-            { label: "Add Enquiries", href: "/enquiries/add" },
+            { label: "Add Enquiries", href: "/enquiries/add", allowedRoles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR] },
             { label: "All Enquiries", href: "/enquiries/all" }
         ]
     },
@@ -52,7 +52,7 @@ export const menuItems: MenuItem[] = [
         subItems: [
             { label: "Calendar View", href: "/schedules/calendar" },
             { label: "Jobs", href: "/schedules/jobs" },
-            { label: "Add Schedule", href: "/schedules/add" }
+            { label: "Add Schedule", href: "/schedules/add", allowedRoles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR] }
         ]
     },
 

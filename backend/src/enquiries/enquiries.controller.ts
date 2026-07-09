@@ -23,6 +23,7 @@ export class EnquiriesController {
   constructor(private readonly enquiriesService: EnquiriesService) {}
 
   @Post()
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR)
   create(@Body() createEnquiryDto: CreateEnquiryDto) {
     return this.enquiriesService.create(createEnquiryDto);
   }
@@ -38,6 +39,7 @@ export class EnquiriesController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR)
   update(@Param('id') id: string, @Body() updateEnquiryDto: UpdateEnquiryDto) {
     return this.enquiriesService.update(id, updateEnquiryDto);
   }

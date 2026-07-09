@@ -92,7 +92,7 @@ export function DateRangePicker({
                                 onSelect={setTempDate}
                                 numberOfMonths={2}
                                 disabled={(date) =>
-                                    date > new Date() || date < new Date("1900-01-01")
+                                    date < new Date("1900-01-01")
                                 }
                             />
                             <div className="flex items-center justify-end gap-2 p-3 border-t">

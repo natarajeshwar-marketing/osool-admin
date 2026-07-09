@@ -29,9 +29,10 @@ interface FullCalendarProps {
   onEventDoubleClick?: (event: CalendarEvent) => void;
   onEventDrop?: (event: CalendarEvent, targetDate: Date) => void;
   className?: string;
+  readonly?: boolean;
 }
 
-export function FullCalendar({ events = [], onDateClick, onEventClick, onEventDoubleClick, onEventDrop, className }: FullCalendarProps) {
+export function FullCalendar({ events = [], onDateClick, onEventClick, onEventDoubleClick, onEventDrop, className, readonly = false }: FullCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [draggedOverDate, setDraggedOverDate] = useState<string | null>(null);
 
@@ -129,16 +130,17 @@ export function FullCalendar({ events = [], onDateClick, onEventClick, onEventDo
           <div
             key={day.toString()}
             className={cn(
-              "border-b border-r p-2 flex flex-col transition-all cursor-pointer min-h-0 relative",
+              "border-b border-r p-2 flex flex-col transition-all min-h-0 relative",
+              !readonly && "cursor-pointer",
               !isSameMonth(day, monthStart) ? "text-slate-400 bg-slate-50/50" : "text-slate-700 bg-white",
               isSameDay(day, new Date()) ? "ring-2 ring-inset ring-[#001e60]" : "",
               i === 0 ? "border-l" : "", // left border for the first column
               isDraggedOver ? "bg-[#001e60]/5 border-[#001e60] ring-2 ring-inset ring-[#001e60]/30 shadow-inner scale-[0.98]" : "hover:bg-slate-50"
             )}
-            onClick={() => onDateClick && onDateClick(cloneDay)}
-            onDragOver={handleDragOver}
-            onDragEnter={(e) => handleDragEnter(e, cloneDay)}
-            onDrop={(e) => handleDrop(e, cloneDay)}
+            onClick={() => !readonly && onDateClick && onDateClick(cloneDay)}
+            onDragOver={readonly ? undefined : handleDragOver}
+            onDragEnter={readonly ? undefined : (e) => handleDragEnter(e, cloneDay)}
+            onDrop={readonly ? undefined : (e) => handleDrop(e, cloneDay)}
           >
             <div className="flex flex-col h-full w-full">
               <div className="flex justify-end mb-1">
@@ -153,19 +155,22 @@ export function FullCalendar({ events = [], onDateClick, onEventClick, onEventDo
                 {dayEvents.map(event => (
                   <div
                     key={event.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, event)}
-                    onDragEnd={handleDragEnd}
+                    draggable={!readonly}
+                    onDragStart={(e) => !readonly && handleDragStart(e, event)}
+                    onDragEnd={readonly ? undefined : handleDragEnd}
                     onClick={(e) => {
                       e.stopPropagation();
                       onEventClick && onEventClick(event);
                     }}
                     onDoubleClick={(e) => {
                       e.stopPropagation();
-                      onEventDoubleClick && onEventDoubleClick(event);
+                      if (!readonly && onEventDoubleClick) {
+                        onEventDoubleClick(event);
+                      }
                     }}
                     className={cn(
-                      "text-xs px-2 py-1 rounded truncate text-white cursor-grab active:cursor-grabbing hover:opacity-90 hover:scale-[1.02] active:scale-95 transition-all font-medium select-none shadow-sm",
+                      "text-xs px-2 py-1 rounded truncate text-white font-medium select-none shadow-sm transition-all",
+                      !readonly ? "cursor-grab active:cursor-grabbing hover:opacity-90 hover:scale-[1.02] active:scale-95" : "",
                       event.color || "bg-[#001e60]"
                     )}
                     title={event.title}

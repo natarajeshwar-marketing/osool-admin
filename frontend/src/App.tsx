@@ -81,7 +81,7 @@ function App() {
             } />
 
             <Route path="/schedules/add" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR]}>
                 <DashboardLayout>
                   <AddSchedule />
                 </DashboardLayout>
@@ -89,7 +89,7 @@ function App() {
             } />
 
             <Route path="/schedules/edit" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR]}>
                 <DashboardLayout>
                   <EditSchedule />
                 </DashboardLayout>
@@ -97,7 +97,7 @@ function App() {
             } />
 
             <Route path="/enquiries/add" element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR]}>
                 <DashboardLayout>
                   <AddEnquiry />
                 </DashboardLayout>

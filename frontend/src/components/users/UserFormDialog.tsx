@@ -96,6 +96,7 @@ export function UserFormDialog({ isOpen, onClose, onSubmit, userToEdit, isSubmit
                                     <SelectItem value={UserRole.SUPER_ADMIN}>Super Admin</SelectItem>
                                     <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
                                     <SelectItem value={UserRole.EDITOR}>Editor</SelectItem>
+                                    <SelectItem value={UserRole.VIEWER}>Viewer</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
