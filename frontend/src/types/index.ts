@@ -113,20 +113,3 @@ export interface Schedule {
     serviceCategory?: string;
 }
 
-export interface Enquiry {
-    id: string;
-    clientName: string;
-    clientEmail: string;
-    clientPhone: string;
-    serviceName: string;
-    message: string;
-    buildingNumber?: string;
-    apartmentNumber?: string;
-    apartmentType?: string;
-    status: 'Pending' | 'Converted';
-    source: 'Website' | 'Phone' | 'Email' | 'Walk-in';
-    createdAt: string;
-    updatedAt: string;
-}
-
-

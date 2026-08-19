@@ -2,7 +2,7 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { NavLink, useLocation } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, Users, Building, LogOut, Calendar, ChevronDown, ChevronRight, Settings, MessageSquare } from "lucide-react"
+import { LayoutDashboard, Users, Building, LogOut, Calendar, ChevronDown, ChevronRight, Settings } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { UserRole } from "@/types"
 
@@ -37,14 +37,6 @@ export const menuItems: MenuItem[] = [
         label: "Crews",
         icon: Users,
         href: "/crews",
-    },
-    {
-        label: "Enquiries",
-        icon: MessageSquare,
-        subItems: [
-            { label: "Add Enquiries", href: "/enquiries/add", allowedRoles: [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR] },
-            { label: "All Enquiries", href: "/enquiries/all" }
-        ]
     },
     {
         label: "Schedules",

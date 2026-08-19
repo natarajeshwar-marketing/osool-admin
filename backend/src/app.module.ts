@@ -8,7 +8,6 @@ import { BuildingsModule } from './buildings/buildings.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { SchedulesModule } from './schedules/schedules.module';
-import { EnquiriesModule } from './enquiries/enquiries.module';
 import { ServicesModule } from './services/services.module';
 import { DailyLogsModule } from './daily-logs/daily-logs.module';
 
@@ -36,7 +35,6 @@ import { DailyLogsModule } from './daily-logs/daily-logs.module';
     UsersModule,
     AuthModule,
     SchedulesModule,
-    EnquiriesModule,
     ServicesModule,
     DailyLogsModule,
   ],

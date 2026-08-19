@@ -11,8 +11,6 @@ import JobManagement from "@/pages/JobManagement"
 import AddSchedule from "@/pages/AddSchedule"
 import EditSchedule from "@/pages/EditSchedule"
 import Services from "./pages/Services"
-import AddEnquiry from "@/pages/AddEnquiry"
-import AllEnquiries from "@/pages/AllEnquiries"
 // Using relative path to force resolve
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -92,22 +90,6 @@ function App() {
               <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR]}>
                 <DashboardLayout>
                   <EditSchedule />
-                </DashboardLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/enquiries/add" element={
-              <ProtectedRoute allowedRoles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.EDITOR]}>
-                <DashboardLayout>
-                  <AddEnquiry />
-                </DashboardLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/enquiries/all" element={
-              <ProtectedRoute>
-                <DashboardLayout>
-                  <AllEnquiries />
                 </DashboardLayout>
               </ProtectedRoute>
             } />
