@@ -13,7 +13,11 @@ export class ServicesService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.seedDefaultServices();
+    try {
+      await this.seedDefaultServices();
+    } catch (err) {
+      console.error('Failed to seed default services on init:', err);
+    }
   }
 
   async seedDefaultServices(): Promise<void> {

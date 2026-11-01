@@ -1,17 +1,34 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { User } from '../entities/user.entity';
+import { User, UserRole } from '../entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
-export class UsersService {
+export class UsersService implements OnModuleInit {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
   ) {}
+
+  async onModuleInit() {
+    try {
+      const count = await this.usersRepository.count();
+      if (count === 0) {
+        await this.create({
+          email: 'admin@example.com',
+          password: 'password123',
+          role: UserRole.SUPER_ADMIN,
+          name: 'Super Admin',
+        });
+        console.log('Seeded default Super Admin (admin@example.com)');
+      }
+    } catch (err) {
+      console.error('Failed to seed default admin user on init:', err);
+    }
+  }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     const salt = await bcrypt.genSalt();

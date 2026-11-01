@@ -15,8 +15,14 @@ import { AuthController } from './auth.controller';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
-        const secret = configService.get<string>('JWT_SECRET');
-        if (!secret) throw new Error('JWT_SECRET is not defined');
+        const secret =
+          configService.get<string>('JWT_SECRET') ||
+          'osool-default-jwt-secret-key-change-in-prod';
+        if (!configService.get<string>('JWT_SECRET')) {
+          console.warn(
+            'WARN: JWT_SECRET is not set in environment variables; using fallback secret.',
+          );
+        }
         return {
           secret,
           signOptions: { expiresIn: '60m' },
