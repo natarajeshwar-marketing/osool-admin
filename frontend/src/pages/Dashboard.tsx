@@ -121,7 +121,7 @@ export default function Dashboard() {
                 />
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-6">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-6">
                 <StatCard
                     title="Cleaning Revenue"
                     value={`SAR ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(stats.cleaningRevenue || 0)}`}
@@ -137,6 +137,12 @@ export default function Dashboard() {
                 <StatCard
                     title="Pest Control Revenue"
                     value={`SAR ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(stats.pestControlRevenue || 0)}`}
+                    valueClassName="text-2xl"
+                />
+
+                <StatCard
+                    title="Car Wash Revenue"
+                    value={`SAR ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(stats.carWashRevenue || 0)}`}
                     valueClassName="text-2xl"
                 />
             </div>

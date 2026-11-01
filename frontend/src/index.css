@@ -127,6 +127,25 @@
   }
 }
 
+/* Show thin scrollbar inside Radix Select viewports when scrollable */
+[data-radix-select-viewport] {
+  scrollbar-width: thin !important;
+}
+[data-radix-select-viewport]::-webkit-scrollbar {
+  display: block !important;
+  width: 6px;
+}
+[data-radix-select-viewport]::-webkit-scrollbar-track {
+  background: transparent;
+}
+[data-radix-select-viewport]::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+[data-radix-select-viewport]::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 /* Custom Scrollbar for Calendar Events */
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;

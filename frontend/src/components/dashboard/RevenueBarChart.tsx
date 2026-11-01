@@ -109,18 +109,19 @@ interface RevenueBarChartProps {
 }
 
 export function RevenueBarChart({ data }: RevenueBarChartProps) {
-    const labels = ['Cleaning', 'Maintenance', 'Pest Control'];
+    const labels = ['Cleaning', 'Maintenance', 'Pest Control', 'Car Wash'];
     
     const chartData = {
         labels,
         datasets: [
             {
                 label: 'Revenue',
-                data: [data.cleaning || 0, data.maintenance || 0, data.pestControl || 0],
+                data: [data.cleaning || 0, data.maintenance || 0, data.pestControl || 0, data.carWash || 0],
                 backgroundColor: [
                     '#2563eb', // Blue-600
                     '#d97706', // Amber-600
                     '#059669', // Emerald-600
+                    '#0891b2', // Cyan-600
                 ],
                 borderRadius: 4,
             },
