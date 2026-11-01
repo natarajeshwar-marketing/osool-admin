@@ -16,23 +16,33 @@ export class AuthController {
   @Post('login')
   async login(@Request() req, @Res({ passthrough: true }) res: Response) {
     const loginResult = await this.authService.login(req.user);
-    const isProd = process.env.NODE_ENV === 'production';
+    const isSecure =
+      process.env.NODE_ENV === 'production' ||
+      req.secure ||
+      req.headers['x-forwarded-proto'] === 'https' ||
+      (typeof req.headers.origin === 'string' &&
+        req.headers.origin.startsWith('https://'));
     res.cookie('token', loginResult.access_token, {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'none' : 'lax',
+      secure: isSecure,
+      sameSite: isSecure ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
     return { user: loginResult.user };
   }
 
   @Post('logout')
-  async logout(@Res({ passthrough: true }) res: Response) {
-    const isProd = process.env.NODE_ENV === 'production';
+  async logout(@Request() req, @Res({ passthrough: true }) res: Response) {
+    const isSecure =
+      process.env.NODE_ENV === 'production' ||
+      req.secure ||
+      req.headers['x-forwarded-proto'] === 'https' ||
+      (typeof req.headers.origin === 'string' &&
+        req.headers.origin.startsWith('https://'));
     res.cookie('token', '', {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'none' : 'lax',
+      secure: isSecure,
+      sameSite: isSecure ? 'none' : 'lax',
       expires: new Date(0),
     });
     return { message: 'Logged out successfully' };
